@@ -1,0 +1,13 @@
+client:
+  workload:
+    - rps: 100
+      duration: 500us
+    - rps: 500
+      duration: 30ms
+  rq_timeout: 100ms
+server:
+  profile:
+    - rq_latency: 1ms
+      duration: 1s
+    - rq_latency: 5ms
+      duration: 5s
