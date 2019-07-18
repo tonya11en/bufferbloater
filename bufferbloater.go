@@ -38,6 +38,7 @@ type parsedYamlConfig struct {
 			Duration  string
 		} `yaml:"profile"`
 		ListenPort uint `yaml:"listen_port"`
+		Threads    uint `yaml:"threads"`
 	}
 }
 
@@ -79,6 +80,7 @@ func serverConfigParse(parsedConfig parsedYamlConfig) (server.Config, error) {
 
 	serverConfig := server.Config{
 		ListenPort: parsedConfig.Server.ListenPort,
+		Threads:    parsedConfig.Server.Threads,
 	}
 
 	for _, segment := range parsedConfig.Server.Profile {

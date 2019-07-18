@@ -25,7 +25,8 @@ server:
       duration: 1s
     - rq_latency: 5ms
       duration: 5s
-  listen_port: 9002`
+  listen_port: 9002
+	threads: 1`
 
 func TestServerParsing(t *testing.T) {
 	var parsedConfig parsedYamlConfig
@@ -39,6 +40,7 @@ func TestServerParsing(t *testing.T) {
 	assert.Equal(t, ss.Profile[0].SegmentDuration, time.Second)
 	assert.Equal(t, ss.Profile[1].RequestLatency, time.Millisecond*5)
 	assert.Equal(t, ss.Profile[1].SegmentDuration, time.Second*5)
+	assert.Equal(t, ss.Threads, uint(1))
 }
 
 func TestClientParsing(t *testing.T) {

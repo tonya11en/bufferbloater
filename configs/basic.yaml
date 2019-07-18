@@ -14,8 +14,9 @@ server:
       duration: 5s
     - rq_latency: 500ms
       duration: 4s
-    - rq_latency: 1s
+    - rq_latency: 250ms
       duration: 5s
-    - rq_latency: 500ms
+    - rq_latency: 125ms
       duration: 4s
   listen_port: 9002
+  threads: 4
