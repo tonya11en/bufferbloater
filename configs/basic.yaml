@@ -5,9 +5,13 @@ client:
     - rps: 500
       duration: 30ms
   rq_timeout: 100ms
+  target_server:
+    address: 0.0.0.0
+    port: 9001
 server:
   profile:
     - rq_latency: 1ms
       duration: 1s
     - rq_latency: 5ms
       duration: 5s
+  listen_port: 9001
