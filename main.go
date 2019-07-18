@@ -24,5 +24,7 @@ func main() {
 			"error", err)
 	}
 
+	bb.Run()
+
 	sugar.Infof("ok %+v", &bb)
 }

@@ -10,8 +10,12 @@ client:
     port: 9001
 server:
   profile:
-    - rq_latency: 1ms
-      duration: 1s
-    - rq_latency: 5ms
+    - rq_latency: 1s
       duration: 5s
-  listen_port: 9001
+    - rq_latency: 500ms
+      duration: 4s
+    - rq_latency: 1s
+      duration: 5s
+    - rq_latency: 500ms
+      duration: 4s
+  listen_port: 9002

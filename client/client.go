@@ -1,6 +1,7 @@
 package client
 
 import (
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -37,4 +38,9 @@ func NewClient(config Config, logger *zap.SugaredLogger) *Client {
 		"config", c.config)
 
 	return &c
+}
+
+func (c *Client) Start(wg *sync.WaitGroup) {
+	defer wg.Done()
+	// noop
 }

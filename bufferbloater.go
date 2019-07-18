@@ -2,6 +2,7 @@ package main
 
 import (
 	"io/ioutil"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -42,6 +43,8 @@ type parsedYamlConfig struct {
 
 // Creates a properly typed client config.
 func clientConfigParse(parsedConfig parsedYamlConfig) (client.Config, error) {
+	// TODO: validate config
+
 	clientConfig := client.Config{
 		TargetServer: client.Target{
 			Address: parsedConfig.Client.TargetServer.Address,
@@ -72,6 +75,8 @@ func clientConfigParse(parsedConfig parsedYamlConfig) (client.Config, error) {
 }
 
 func serverConfigParse(parsedConfig parsedYamlConfig) (server.Config, error) {
+	// TODO: validate config
+
 	serverConfig := server.Config{
 		ListenPort: parsedConfig.Server.ListenPort,
 	}
@@ -140,4 +145,12 @@ func NewBufferbloater(configFilename string, logger *zap.SugaredLogger) (*Buffer
 	bb.s = server.NewServer(serverConfig, logger)
 
 	return &bb, nil
+}
+
+func (bb *Bufferbloater) Run() {
+	var wg sync.WaitGroup
+	wg.Add(2)
+	bb.s.Start(&wg)
+	bb.c.Start(&wg)
+	wg.Wait()
 }
