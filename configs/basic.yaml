@@ -1,22 +1,20 @@
 client:
   workload:
-    - rps: 100
-      duration: 500us
-    - rps: 500
-      duration: 30ms
-  rq_timeout: 100ms
+    - rps: 10
+      duration: 10s
+  rq_timeout: 1s
   target_server:
     address: 0.0.0.0
-    port: 9001
+    port: 9002
 server:
   profile:
-    - rq_latency: 1s
-      duration: 5s
-    - rq_latency: 500ms
-      duration: 4s
-    - rq_latency: 250ms
-      duration: 5s
-    - rq_latency: 125ms
-      duration: 4s
+    - rq_latency: 200ms
+      duration: 2s
+    - rq_latency: 400ms
+      duration: 2s
+    - rq_latency: 600ms
+      duration: 2s
+    - rq_latency: 800ms
+      duration: 10s
   listen_port: 9002
   threads: 4

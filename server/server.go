@@ -76,6 +76,8 @@ func (s *Server) DelayedShutdown() {
 	s.log.Infow("gracefully shutting down server",
 		"delay", delay)
 	s.srv.Shutdown(context.Background())
+
+	// Wait for the queue to empty.
 }
 
 func (s *Server) currentRequestLatency() time.Duration {
@@ -90,7 +92,7 @@ func (s *Server) currentRequestLatency() time.Duration {
 		}
 	}
 
-	s.log.Infow("@tallen sleeptime", "t", sleepTime)
+	s.log.Debugw("calculated server request sleep time", "t", sleepTime)
 	return sleepTime
 }
 

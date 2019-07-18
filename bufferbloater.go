@@ -152,7 +152,7 @@ func NewBufferbloater(configFilename string, logger *zap.SugaredLogger) (*Buffer
 func (bb *Bufferbloater) Run() {
 	var wg sync.WaitGroup
 	wg.Add(2)
-	bb.s.Start(&wg)
-	bb.c.Start(&wg)
+	go bb.s.Start(&wg)
+	go bb.c.Start(&wg)
 	wg.Wait()
 }
