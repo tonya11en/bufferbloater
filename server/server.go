@@ -65,7 +65,9 @@ func NewServer(config Config, logger *zap.SugaredLogger) *Server {
 	return &s
 }
 
-func (s *Server) DelayedShutdown() {
+func (s *Server) DelayedShutdown(wg *sync.WaitGroup) {
+	defer wg.Done()
+
 	delay := time.Second * 0
 	for _, segment := range s.config.Profile {
 		delay += segment.SegmentDuration
@@ -73,11 +75,10 @@ func (s *Server) DelayedShutdown() {
 
 	time.Sleep(delay)
 
-	s.log.Infow("gracefully shutting down server",
-		"delay", delay)
+	s.log.Infow("gracefully shutting down",
+		"service_length", delay)
 	s.srv.Shutdown(context.Background())
-
-	// Wait for the queue to empty.
+	s.log.Infow("graceful shutdown complete")
 }
 
 func (s *Server) currentRequestLatency() time.Duration {
@@ -123,7 +124,9 @@ func (s *Server) Start(wg *sync.WaitGroup) {
 	s.mux.HandleFunc("/", s.requestHandler)
 
 	// Make sure the server shuts down after the configured amount of time.
-	go s.DelayedShutdown()
+	var shutdownWg sync.WaitGroup
+	shutdownWg.Add(1)
+	go s.DelayedShutdown(&shutdownWg)
 
 	// Set the simulation start time.
 	s.startTime = time.Now()
@@ -132,4 +135,7 @@ func (s *Server) Start(wg *sync.WaitGroup) {
 		s.log.Fatalw("server error",
 			"error", err)
 	}
+
+	// Wait for shutdown to occur.
+	shutdownWg.Wait()
 }
