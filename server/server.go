@@ -12,18 +12,6 @@ import (
 	"go.uber.org/zap"
 )
 
-type serverMetrics struct {
-	rq struct {
-		count int `metric:"count" type:"counter"`
-	} `metric:"server.rq"`
-	queue struct {
-		size int `metric:"size" type:gauge"`
-	} `metric:"server.queue"`
-	service struct {
-		time time.Duration `metric:"time" type:"histogram"`
-	}
-}
-
 type LatencySegment struct {
 	RequestLatency  time.Duration
 	SegmentDuration time.Duration
