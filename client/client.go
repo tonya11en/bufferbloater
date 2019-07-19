@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/segmentio/stats"
 	"github.com/segmentio/stats/datadog"
 	"github.com/segmentio/stats/httpstats"
 	"go.uber.org/zap"
@@ -63,6 +64,7 @@ func (c *Client) sendWorkloadRequest() {
 	// Handle timeouts and report error otherwise.
 	if err, ok := err.(net.Error); ok && err.Timeout() {
 		c.log.Warnw("request timed out")
+		stats.Incr("client.rq.timeout")
 	} else if err != nil {
 		c.log.Errorw("request error", "error", err)
 	}

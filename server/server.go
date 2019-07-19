@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/segmentio/stats"
@@ -23,6 +24,13 @@ type Config struct {
 	Threads    uint
 }
 
+type request struct {
+	// When the request came in.
+	rcvTime time.Time
+
+	progress time.Duration
+}
+
 type Server struct {
 	config         Config
 	log            *zap.SugaredLogger
@@ -31,13 +39,9 @@ type Server struct {
 	mux            *http.ServeMux
 	statsClient    *datadog.Client
 
-	// The work queue simply stores the time at which the request was received and
-	// is protected by a mutex.
-	queue []time.Time
-	qmtx  sync.Mutex
-
 	// Only allow a certain number of requests to be serviced (sleeped) at a time.
-	sem chan struct{}
+	sem       chan struct{}
+	queueSize int32
 
 	// This is relevant for determining where we are time-wise in the simulation.
 	startTime time.Time
@@ -103,28 +107,32 @@ func (s *Server) currentRequestLatency() time.Duration {
 func (s *Server) requestHandler(w http.ResponseWriter, req *http.Request) {
 	stats.Incr("server.rq.count")
 
-	// For now, we'll ignore what's in the queue and just use it to serialize the
-	// requests.
-	s.qmtx.Lock()
-	l := len(s.queue)
-	s.log.Debugw("appending to queue", "queue_length", l)
-	s.queue = append(s.queue, time.Now())
-	s.qmtx.Unlock()
-	stats.Set("server.queue.size", float64(l))
+	rq := request{
+		rcvTime:  time.Now(),
+		progress: 0 * time.Nanosecond,
+	}
 
-	// This is the "servicing" of a request.
-	<-s.sem
+	sz := atomic.AddInt32(&s.queueSize, 1)
+	s.log.Debugw("increased queue size", "queue_length", sz)
+
+	// This is the "servicing" of a request. The semaphore asserts the
+	// concurrency.
 	crl := s.currentRequestLatency()
-	time.Sleep(crl)
-	s.sem <- struct{}{}
-	stats.Observe("server.service.time", float64(crl.Nanoseconds()/1000))
+	workDuration := 500 * time.Microsecond
+	for rq.progress < crl {
+		<-s.sem
+		// Hard-coding the amount of time a rq is "worked" on.
+		// TODO: make this configurable if needed, avoiding now because too many
+		// knobs.
+		time.Sleep(workDuration)
+		s.sem <- struct{}{}
+		rq.progress += workDuration
+	}
 
-	// Pop a request off the queue.
-	s.qmtx.Lock()
-	s.log.Debugw("popping from queue", "queue_length", len(s.queue))
-	s.queue = s.queue[1:]
-	stats.Set("server.queue.size", float64(len(s.queue)))
-	s.qmtx.Unlock()
+	sz = atomic.AddInt32(&s.queueSize, -1)
+	stats.Set("server.queue.size", float64(sz))
+	s.log.Debugw("decreased queue size", "queue_length", sz)
+
 	return
 }
 
