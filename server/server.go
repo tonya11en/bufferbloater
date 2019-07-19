@@ -8,9 +8,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/segmentio/stats"
-	"github.com/segmentio/stats/datadog"
 	"go.uber.org/zap"
+
+	"github.com/tonya11en/bufferbloater/stats"
 )
 
 type LatencySegment struct {
@@ -37,7 +37,7 @@ type Server struct {
 	activeRequests int32
 	srv            *http.Server
 	mux            *http.ServeMux
-	statsClient    *datadog.Client
+	statsMgr       *stats.StatsMgr
 
 	// Only allow a certain number of requests to be serviced (sleeped) at a time.
 	sem       chan struct{}
@@ -47,12 +47,13 @@ type Server struct {
 	startTime time.Time
 }
 
-func NewServer(config Config, logger *zap.SugaredLogger) *Server {
+func NewServer(config Config, logger *zap.SugaredLogger, sm *stats.StatsMgr) *Server {
 	s := Server{
-		config: config,
-		log:    logger,
-		mux:    http.NewServeMux(),
-		sem:    make(chan struct{}, config.Threads),
+		config:   config,
+		log:      logger,
+		mux:      http.NewServeMux(),
+		sem:      make(chan struct{}, config.Threads),
+		statsMgr: sm,
 	}
 
 	// Load up the semaphore with tickets.
@@ -105,7 +106,7 @@ func (s *Server) currentRequestLatency() time.Duration {
 }
 
 func (s *Server) requestHandler(w http.ResponseWriter, req *http.Request) {
-	stats.Incr("server.rq.count")
+	s.statsMgr.Incr("server.rq.count")
 
 	rq := request{
 		rcvTime:  time.Now(),
@@ -130,7 +131,7 @@ func (s *Server) requestHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	sz = atomic.AddInt32(&s.queueSize, -1)
-	stats.Set("server.queue.size", float64(sz))
+	s.statsMgr.Set("server.queue.size", float64(sz))
 	s.log.Debugw("decreased queue size", "queue_length", sz)
 
 	return

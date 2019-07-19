@@ -1,11 +1,6 @@
 hash: 36b07eddfa469660912aaa9d846fc5742e5c9e3acf4b2d8753101d2af54ef30c
-updated: 2019-07-18T16:49:31.240312841-07:00
+updated: 2019-07-20T18:54:34.098189675-07:00
 imports:
-- name: github.com/segmentio/stats
-  version: 29b56b24d9fb484874321b8e0f7d99e4b58ead25
-  subpackages:
-  - datadog
-  - httpstats
 - name: go.uber.org/atomic
   version: df976f2515e274675050de7b3f42545de80594fd
 - name: go.uber.org/multierr
@@ -22,7 +17,7 @@ imports:
   version: 51d6538a90f86fe93ac480b35f37b2be17fef232
 testImports:
 - name: github.com/davecgh/go-spew
-  version: 346938d642f2ec3594ed81d874461961cd0faa76
+  version: d8f796af33cc11cb798c1aaeb27a4ebc5099927d
   subpackages:
   - spew
 - name: github.com/pmezard/go-difflib
@@ -30,6 +25,6 @@ testImports:
   subpackages:
   - difflib
 - name: github.com/stretchr/testify
-  version: d84e815d441de9c64a3a2f9336c32acf1e7349d1
+  version: 221dbe5ed46703ee255b1da0dec05086f5035f62
   subpackages:
   - assert
