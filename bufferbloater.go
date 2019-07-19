@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/segmentio/stats"
+	"github.com/segmentio/stats/datadog"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v2"
 
@@ -13,9 +15,10 @@ import (
 )
 
 type Bufferbloater struct {
-	log *zap.SugaredLogger
-	c   *client.Client
-	s   *server.Server
+	log         *zap.SugaredLogger
+	c           *client.Client
+	s           *server.Server
+	statsClient *datadog.Client
 }
 
 // Basic representation of the parsed yaml file before the durations are parsed.
@@ -124,7 +127,11 @@ func parseConfigFromFile(configFilename string) (parsedYamlConfig, error) {
 func NewBufferbloater(configFilename string, logger *zap.SugaredLogger) (*Bufferbloater, error) {
 	bb := Bufferbloater{
 		log: logger,
+		// TODO: configure stats target/port.
+		statsClient: datadog.NewClient("localhost:8125"),
 	}
+
+	stats.Register(bb.statsClient)
 
 	parsedConfig, err := parseConfigFromFile(configFilename)
 	if err != nil {
@@ -150,6 +157,8 @@ func NewBufferbloater(configFilename string, logger *zap.SugaredLogger) (*Buffer
 }
 
 func (bb *Bufferbloater) Run() {
+	defer stats.Flush()
+
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go bb.s.Start(&wg)

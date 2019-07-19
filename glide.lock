@@ -1,6 +1,11 @@
 hash: 36b07eddfa469660912aaa9d846fc5742e5c9e3acf4b2d8753101d2af54ef30c
-updated: 2019-07-18T12:11:19.333315812-07:00
+updated: 2019-07-18T16:49:31.240312841-07:00
 imports:
+- name: github.com/segmentio/stats
+  version: 29b56b24d9fb484874321b8e0f7d99e4b58ead25
+  subpackages:
+  - datadog
+  - httpstats
 - name: go.uber.org/atomic
   version: df976f2515e274675050de7b3f42545de80594fd
 - name: go.uber.org/multierr

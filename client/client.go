@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/segmentio/stats/datadog"
+	"github.com/segmentio/stats/httpstats"
 	"go.uber.org/zap"
 )
 
@@ -27,9 +29,10 @@ type Config struct {
 }
 
 type Client struct {
-	config     Config
-	log        *zap.SugaredLogger
-	httpClient *http.Client
+	config      Config
+	log         *zap.SugaredLogger
+	httpClient  *http.Client
+	statsClient *datadog.Client
 }
 
 func NewClient(config Config, logger *zap.SugaredLogger) *Client {
@@ -40,6 +43,9 @@ func NewClient(config Config, logger *zap.SugaredLogger) *Client {
 
 	c.httpClient = &http.Client{
 		Timeout: c.config.RequestTimeout,
+		Transport: httpstats.NewTransport(
+			&http.Transport{},
+		),
 	}
 
 	logger.Infow("done creating client",
@@ -48,19 +54,15 @@ func NewClient(config Config, logger *zap.SugaredLogger) *Client {
 	return &c
 }
 
-func (c *Client) timeoutHandler() {
-	// TODO: Current noop, but will need to report stats.
-	c.log.Warnw("request timed out")
-}
-
 func (c *Client) sendWorkloadRequest() {
 	targetString := fmt.Sprintf("http://%s:%d", c.config.TargetServer.Address, c.config.TargetServer.Port)
-	_, err := c.httpClient.Get(targetString)
 	c.log.Debugw("sending request")
+
+	_, err := c.httpClient.Get(targetString)
 
 	// Handle timeouts and report error otherwise.
 	if err, ok := err.(net.Error); ok && err.Timeout() {
-		c.timeoutHandler()
+		c.log.Warnw("request timed out")
 	} else if err != nil {
 		c.log.Errorw("request error", "error", err)
 	}

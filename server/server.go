@@ -7,8 +7,22 @@ import (
 	"sync"
 	"time"
 
+	"github.com/segmentio/stats"
+	"github.com/segmentio/stats/datadog"
 	"go.uber.org/zap"
 )
+
+type serverMetrics struct {
+	rq struct {
+		count int `metric:"count" type:"counter"`
+	} `metric:"server.rq"`
+	queue struct {
+		size int `metric:"size" type:gauge"`
+	} `metric:"server.queue"`
+	service struct {
+		time time.Duration `metric:"time" type:"histogram"`
+	}
+}
 
 type LatencySegment struct {
 	RequestLatency  time.Duration
@@ -27,6 +41,7 @@ type Server struct {
 	activeRequests int32
 	srv            *http.Server
 	mux            *http.ServeMux
+	statsClient    *datadog.Client
 
 	// The work queue simply stores the time at which the request was received and
 	// is protected by a mutex.
@@ -98,22 +113,29 @@ func (s *Server) currentRequestLatency() time.Duration {
 }
 
 func (s *Server) requestHandler(w http.ResponseWriter, req *http.Request) {
+	stats.Incr("server.rq.count")
+
 	// For now, we'll ignore what's in the queue and just use it to serialize the
 	// requests.
 	s.qmtx.Lock()
-	s.log.Infow("appending", "queue_length", len(s.queue))
+	l := len(s.queue)
+	s.log.Debugw("appending to queue", "queue_length", l)
 	s.queue = append(s.queue, time.Now())
 	s.qmtx.Unlock()
+	stats.Set("server.queue.size", float64(l))
 
 	// This is the "servicing" of a request.
 	<-s.sem
-	time.Sleep(s.currentRequestLatency())
+	crl := s.currentRequestLatency()
+	time.Sleep(crl)
 	s.sem <- struct{}{}
+	stats.Observe("server.service.time", float64(crl.Nanoseconds()/1000))
 
 	// Pop a request off the queue.
 	s.qmtx.Lock()
-	s.log.Infow("popping", "queue_length", len(s.queue))
+	s.log.Debugw("popping from queue", "queue_length", len(s.queue))
 	s.queue = s.queue[1:]
+	stats.Set("server.queue.size", float64(len(s.queue)))
 	s.qmtx.Unlock()
 	return
 }
