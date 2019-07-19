@@ -8,9 +8,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/segmentio/stats"
-	"github.com/segmentio/stats/datadog"
 	"go.uber.org/zap"
+
+	"github.com/tonya11en/bufferbloater/stats"
 )
 
 type LatencySegment struct {
