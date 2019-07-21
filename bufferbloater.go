@@ -5,20 +5,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/segmentio/stats"
-	"github.com/segmentio/stats/datadog"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v2"
 
 	"github.com/tonya11en/bufferbloater/client"
 	"github.com/tonya11en/bufferbloater/server"
+	"github.com/tonya11en/bufferbloater/stats"
 )
 
 type Bufferbloater struct {
-	log         *zap.SugaredLogger
-	c           *client.Client
-	s           *server.Server
-	statsClient *datadog.Client
+	log      *zap.SugaredLogger
+	c        *client.Client
+	s        *server.Server
+	statsMgr *stats.StatsMgr
 }
 
 // Basic representation of the parsed yaml file before the durations are parsed.
@@ -126,12 +125,9 @@ func parseConfigFromFile(configFilename string) (parsedYamlConfig, error) {
 
 func NewBufferbloater(configFilename string, logger *zap.SugaredLogger) (*Bufferbloater, error) {
 	bb := Bufferbloater{
-		log: logger,
-		// TODO: configure stats target/port.
-		statsClient: datadog.NewClient("localhost:8125"),
+		log:      logger,
+		statsMgr: stats.NewStatsMgrImpl(logger),
 	}
-
-	stats.Register(bb.statsClient)
 
 	parsedConfig, err := parseConfigFromFile(configFilename)
 	if err != nil {
@@ -144,24 +140,33 @@ func NewBufferbloater(configFilename string, logger *zap.SugaredLogger) (*Buffer
 		bb.log.Fatalw("failed to create server config",
 			"error", err)
 	}
-	bb.c = client.NewClient(clientConfig, logger)
+	bb.c = client.NewClient(clientConfig, logger, bb.statsMgr)
 
 	serverConfig, err := serverConfigParse(parsedConfig)
 	if err != nil {
 		bb.log.Fatalw("failed to create server config",
 			"error", err)
 	}
-	bb.s = server.NewServer(serverConfig, logger)
+	bb.s = server.NewServer(serverConfig, logger, bb.statsMgr)
 
 	return &bb, nil
 }
 
 func (bb *Bufferbloater) Run() {
-	defer stats.Flush()
+	// TODO: make folder configurable.
+	defer bb.statsMgr.DumpStatsToFolder("/tmp")
+
+	stopStats := make(chan struct{}, 1)
+	var statsWg sync.WaitGroup
+	statsWg.Add(1)
+	go bb.statsMgr.PeriodicStatsCollection(100*time.Millisecond, stopStats, &statsWg)
 
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go bb.s.Start(&wg)
 	go bb.c.Start(&wg)
 	wg.Wait()
+
+	stopStats <- struct{}{}
+	statsWg.Wait()
 }
