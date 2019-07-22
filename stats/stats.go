@@ -69,8 +69,10 @@ func (s *StatsMgr) sample() {
 func (s *StatsMgr) DumpStatsToFolder(folderName string) error {
 	s.mtx.Lock()
 
+	os.MkdirAll(folderName, os.ModePerm)
+
 	for statName, sampleSlice := range s.sampleCollection {
-		filename := fmt.Sprintf("%s.csv", statName)
+		filename := fmt.Sprintf("%s/%s.csv", folderName, statName)
 		s.log.Infow("creating stats file", "filename", filename)
 		file, err := os.Create(filename)
 		if err != nil {

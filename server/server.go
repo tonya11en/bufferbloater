@@ -101,7 +101,6 @@ func (s *Server) currentRequestLatency() time.Duration {
 		}
 	}
 
-	s.log.Debugw("calculated server request sleep time", "t", sleepTime)
 	return sleepTime
 }
 
@@ -114,7 +113,6 @@ func (s *Server) requestHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	sz := atomic.AddInt32(&s.queueSize, 1)
-	s.log.Debugw("increased queue size", "queue_length", sz)
 
 	// This is the "servicing" of a request. The semaphore asserts the
 	// concurrency.
@@ -132,7 +130,6 @@ func (s *Server) requestHandler(w http.ResponseWriter, req *http.Request) {
 
 	sz = atomic.AddInt32(&s.queueSize, -1)
 	s.statsMgr.Set("server.queue.size", float64(sz))
-	s.log.Debugw("decreased queue size", "queue_length", sz)
 
 	return
 }

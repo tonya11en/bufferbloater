@@ -154,7 +154,7 @@ func NewBufferbloater(configFilename string, logger *zap.SugaredLogger) (*Buffer
 
 func (bb *Bufferbloater) Run() {
 	// TODO: make folder configurable.
-	defer bb.statsMgr.DumpStatsToFolder("/tmp")
+	defer bb.statsMgr.DumpStatsToFolder("data")
 
 	stopStats := make(chan struct{}, 1)
 	var statsWg sync.WaitGroup

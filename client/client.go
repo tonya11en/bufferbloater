@@ -53,7 +53,6 @@ func NewClient(config Config, logger *zap.SugaredLogger, sm *stats.StatsMgr) *Cl
 
 func (c *Client) sendWorkloadRequest() {
 	targetString := fmt.Sprintf("http://%s:%d", c.config.TargetServer.Address, c.config.TargetServer.Port)
-	c.log.Debugw("sending request")
 
 	rqStart := time.Now()
 	_, err := c.httpClient.Get(targetString)
@@ -63,13 +62,18 @@ func (c *Client) sendWorkloadRequest() {
 	// Handle timeouts and report error otherwise.
 	if err, ok := err.(net.Error); ok && err.Timeout() {
 		c.log.Warnw("request timed out")
-		c.statsMgr.Incr("client.rq.timeout")
+
+		// Directly measuring timeouts because we only care about the point-in-time
+		// the request that timed out was sent.
+		c.statsMgr.DirectMeasurement("client.rq.timeout", rqStart, 0.0)
 	} else if err != nil {
 		c.log.Errorw("request error", "error", err)
 	}
 }
 
 func (c *Client) processWorkloadStage(ws WorkloadStage) {
+	c.statsMgr.Set("client.rps", float64(ws.RPS))
+
 	// Divide the requests/sec evenly into the duration of this stage. We can cast
 	// an integral type to a time.Duration since time.Duration is an int64 behind
 	// the scenes.
@@ -99,6 +103,7 @@ func (c *Client) Start(wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for _, stage := range c.config.Workload {
+		c.log.Infow("processing new client workload stage", "stage", stage)
 		c.processWorkloadStage(stage)
 	}
 
