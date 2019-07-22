@@ -3,14 +3,14 @@ client:
     - rps: 10
       duration: 10s
     - rps: 20
-      duration: 20s
+      duration: 50s
   rq_timeout: 5s
   target_server:
     address: 0.0.0.0
-    port: 9002
+    port: 9001
 server:
   profile:
     - rq_latency: 200ms
-      duration: 30s
+      duration: 60s
   listen_port: 9002
   threads: 4

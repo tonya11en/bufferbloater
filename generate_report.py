@@ -20,11 +20,13 @@ timeout_timestamps = []
 def xy_from_csv(filename):
     x = []
     y = []
-    with open(data_dir + "/" + filename,'r') as csvfile:
-        plots = csv.reader(csvfile, delimiter=',')
-        for row in plots:
-            x.append(float(row[0]))
-            y.append(float(row[1]))
+    path = data_dir + "/" + filename
+    if os.path.exists(path):
+        with open(path,'r') as csvfile:
+            plots = csv.reader(csvfile, delimiter=',')
+            for row in plots:
+                x.append(float(row[0]))
+                y.append(float(row[1]))
     return x, y
 
 # We want to plot the request are, latency, and the moment timeouts happen.
@@ -46,7 +48,7 @@ fig, (ax1, ax2, ax3) = plt.subplots(3)
 ax1.set_xlabel('Time (s)')
 ax1.set_xlim([0,relative_sim_end])
 ax1.set_ylabel('Request Latency')
-ax1.plot(rq_latency_x,rq_latency_y)
+ax1.scatter(rq_latency_x,rq_latency_y)
 ax1.tick_params(axis='y', labelcolor="black")
 ax1.set_title("Request Latency")
 
