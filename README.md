@@ -1,6 +1,10 @@
 # bufferbloater
 A configurable client/server bufferbloat simulation.
 
+## Building
+
+Just run `make`.
+
 ## Configuration
 
 A basic configuration file looks something like this:
