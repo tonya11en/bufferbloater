@@ -7,7 +7,7 @@ client:
   rq_timeout: 5s
   target_server:
     address: 0.0.0.0
-    port: 9001
+    port: 9002
 server:
   profile:
     - rq_latency: 200ms
