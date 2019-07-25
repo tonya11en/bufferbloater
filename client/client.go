@@ -70,7 +70,7 @@ func (c *Client) sendWorkloadRequest() {
 	}
 
 	if resp.StatusCode == http.StatusOK {
-		c.statsMgr.DirectMeasurement("client.rq.latency", rqStart, float64(latency.Nanoseconds()/1000.0))
+		c.statsMgr.DirectMeasurement("client.rq.latency", rqStart, float64(latency.Seconds()))
 	} else if resp.StatusCode == http.StatusServiceUnavailable {
 		c.statsMgr.Incr("client.rq.503")
 	}
