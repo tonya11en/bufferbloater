@@ -28,9 +28,10 @@ type Config struct {
 }
 
 type Client struct {
-	config   Config
-	log      *zap.SugaredLogger
-	statsMgr *stats.StatsMgr
+	config     Config
+	log        *zap.SugaredLogger
+	statsMgr   *stats.StatsMgr
+	httpClient *http.Client
 }
 
 func NewClient(config Config, logger *zap.SugaredLogger, sm *stats.StatsMgr) *Client {
@@ -38,6 +39,9 @@ func NewClient(config Config, logger *zap.SugaredLogger, sm *stats.StatsMgr) *Cl
 		config:   config,
 		log:      logger,
 		statsMgr: sm,
+		httpClient: &http.Client{
+			Timeout: config.RequestTimeout,
+		},
 	}
 
 	logger.Infow("done creating client",
@@ -49,12 +53,8 @@ func NewClient(config Config, logger *zap.SugaredLogger, sm *stats.StatsMgr) *Cl
 func (c *Client) sendWorkloadRequest() {
 	targetString := fmt.Sprintf("http://%s:%d", c.config.TargetServer.Address, c.config.TargetServer.Port)
 
-	httpClient := &http.Client{
-		Timeout: c.config.RequestTimeout,
-	}
-
 	rqStart := time.Now()
-	resp, err := httpClient.Get(targetString)
+	resp, err := c.httpClient.Get(targetString)
 	latency := time.Since(rqStart)
 	// Handle timeouts and report error otherwise.
 	if err, ok := err.(net.Error); ok && err.Timeout() {
@@ -72,7 +72,7 @@ func (c *Client) sendWorkloadRequest() {
 	if resp.StatusCode == http.StatusOK {
 		c.statsMgr.DirectMeasurement("client.rq.latency", rqStart, float64(latency.Seconds()))
 	} else if resp.StatusCode == http.StatusServiceUnavailable {
-		c.statsMgr.Incr("client.rq.503")
+		c.statsMgr.DirectMeasurement("client.rq.503", rqStart, 0.0)
 	}
 }
 
