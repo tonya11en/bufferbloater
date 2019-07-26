@@ -28,10 +28,9 @@ type Config struct {
 }
 
 type Client struct {
-	config     Config
-	log        *zap.SugaredLogger
-	statsMgr   *stats.StatsMgr
-	httpClient *http.Client
+	config   Config
+	log      *zap.SugaredLogger
+	statsMgr *stats.StatsMgr
 }
 
 func NewClient(config Config, logger *zap.SugaredLogger, sm *stats.StatsMgr) *Client {
@@ -39,9 +38,6 @@ func NewClient(config Config, logger *zap.SugaredLogger, sm *stats.StatsMgr) *Cl
 		config:   config,
 		log:      logger,
 		statsMgr: sm,
-		httpClient: &http.Client{
-			Timeout: config.RequestTimeout,
-		},
 	}
 
 	logger.Infow("done creating client",
@@ -54,7 +50,10 @@ func (c *Client) sendWorkloadRequest() {
 	targetString := fmt.Sprintf("http://%s:%d", c.config.TargetServer.Address, c.config.TargetServer.Port)
 
 	rqStart := time.Now()
-	resp, err := c.httpClient.Get(targetString)
+	httpClient := &http.Client{
+		Timeout: c.config.RequestTimeout,
+	}
+	resp, err := httpClient.Get(targetString)
 	latency := time.Since(rqStart)
 	// Handle timeouts and report error otherwise.
 	if err, ok := err.(net.Error); ok && err.Timeout() {
