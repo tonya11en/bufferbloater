@@ -36,8 +36,11 @@ type parsedYamlConfig struct {
 
 	Server struct {
 		Profile []struct {
-			RqLatency string `yaml:"rq_latency"`
-			Duration  string
+			LatencyDistribution []struct {
+				Weight  uint   `yaml:"weight"`
+				Latency string `yaml:"latency"`
+			} `yaml:"latency_distribution"`
+			Duration string
 		} `yaml:"profile"`
 		ListenPort uint `yaml:"listen_port"`
 		Threads    uint `yaml:"threads"`
@@ -88,13 +91,24 @@ func serverConfigParse(parsedConfig parsedYamlConfig) (server.Config, error) {
 	for _, segment := range parsedConfig.Server.Profile {
 		s := server.LatencySegment{}
 
-		d, err := time.ParseDuration(segment.RqLatency)
-		if err != nil {
-			return server.Config{}, err
-		}
-		s.RequestLatency = d
+		// Calculate the latency distribution.
+		s.WeightSum = 0
+		s.LatencyDistribution = []server.WeightedLatency{}
+		for _, wl := range segment.LatencyDistribution {
+			l, err := time.ParseDuration(wl.Latency)
+			if err != nil {
+				return server.Config{}, err
+			}
 
-		d, err = time.ParseDuration(segment.Duration)
+			weightedLatency := server.WeightedLatency{
+				Weight:  wl.Weight,
+				Latency: l,
+			}
+			s.LatencyDistribution = append(s.LatencyDistribution, weightedLatency)
+			s.WeightSum += wl.Weight
+		}
+
+		d, err := time.ParseDuration(segment.Duration)
 		if err != nil {
 			return server.Config{}, err
 		}

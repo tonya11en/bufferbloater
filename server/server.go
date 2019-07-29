@@ -13,9 +13,15 @@ import (
 	"github.com/tonya11en/bufferbloater/stats"
 )
 
+type WeightedLatency struct {
+	Weight  uint
+	Latency time.Duration
+}
+
 type LatencySegment struct {
-	RequestLatency  time.Duration
-	SegmentDuration time.Duration
+	LatencyDistribution []WeightedLatency
+	WeightSum           uint
+	SegmentDuration     time.Duration
 }
 
 type Config struct {
@@ -94,7 +100,8 @@ func (s *Server) currentRequestLatency() time.Duration {
 
 	t := s.startTime
 	for _, segment := range s.config.Profile {
-		sleepTime = segment.RequestLatency
+		// @tallen OH MY GOD FIX THIS DON'T LET IT SLIP
+		sleepTime = time.Millisecond //segment.RequestLatency
 		t = t.Add(segment.SegmentDuration)
 		if t.After(time.Now()) {
 			break

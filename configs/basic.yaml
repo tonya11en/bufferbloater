@@ -10,7 +10,10 @@ client:
     port: 9001
 server:
   profile:
-    - rq_latency: 200ms
-      duration: 20s
+    - duration: 20s
+      - weight: 50
+        latency: 200ms
+      - weight: 50
+        latency: 400ms
   listen_port: 9002
   threads: 4
