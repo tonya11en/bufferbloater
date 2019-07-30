@@ -2,6 +2,8 @@ package server
 
 import (
 	"context"
+	"fmt"
+	"math/rand"
 	"net/http"
 	"strconv"
 	"sync"
@@ -68,8 +70,9 @@ func NewServer(config Config, logger *zap.SugaredLogger, sm *stats.StatsMgr) *Se
 	}
 
 	s.srv = &http.Server{
-		Addr:    ":" + strconv.Itoa(int(s.config.ListenPort)),
-		Handler: s.mux,
+		Addr:        ":" + strconv.Itoa(int(s.config.ListenPort)),
+		Handler:     s.mux,
+		ReadTimeout: 10 * time.Second,
 	}
 
 	logger.Infow("done creating server",
@@ -95,25 +98,36 @@ func (s *Server) DelayedShutdown(wg *sync.WaitGroup) {
 	s.log.Infow("graceful shutdown complete")
 }
 
-func (s *Server) currentRequestLatency() time.Duration {
-	sleepTime := time.Second * 0
+func getLatencyFromDistribution(latencyDistribution []WeightedLatency, rand_num int) (time.Duration, error) {
+	for _, wl := range latencyDistribution {
+		rand_num -= int(wl.Weight)
+		if rand_num < 0 {
+			return wl.Latency, nil
+		}
+	}
 
+	return time.Second, fmt.Errorf("invalid rand num provided for latency distribution")
+}
+
+func (s *Server) currentRequestLatency() time.Duration {
 	t := s.startTime
-	for _, segment := range s.config.Profile {
-		// @tallen OH MY GOD FIX THIS DON'T LET IT SLIP
-		sleepTime = time.Millisecond //segment.RequestLatency
+	var segment LatencySegment
+	for _, segment = range s.config.Profile {
 		t = t.Add(segment.SegmentDuration)
 		if t.After(time.Now()) {
 			break
 		}
 	}
 
+	rn := rand.Intn(int(segment.WeightSum))
+	sleepTime, err := getLatencyFromDistribution(segment.LatencyDistribution, rn)
+	if err != nil {
+		s.log.Fatalf("error calculating latency", "error", err, "rn", rn, "weight_sum", segment.WeightSum)
+	}
 	return sleepTime
 }
 
 func (s *Server) requestHandler(w http.ResponseWriter, req *http.Request) {
-	s.statsMgr.Incr("server.rq.count")
-
 	rq := request{
 		rcvTime:  time.Now(),
 		progress: 0 * time.Nanosecond,

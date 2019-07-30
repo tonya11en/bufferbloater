@@ -53,23 +53,37 @@ func (c *Client) sendWorkloadRequest() {
 	httpClient := &http.Client{
 		Timeout: c.config.RequestTimeout,
 	}
-	resp, err := httpClient.Get(targetString)
-	latency := time.Since(rqStart)
-	// Handle timeouts and report error otherwise.
-	if err, ok := err.(net.Error); ok && err.Timeout() {
-		c.log.Warnw("request timed out")
 
-		// Directly measuring timeouts because we only care about the point-in-time
-		// the request that timed out was sent.
-		c.statsMgr.DirectMeasurement("client.rq.timeout", rqStart, 0.0)
-		return
-	} else if err != nil {
-		c.log.Errorw("request error", "error", err)
+	req, err := http.NewRequest("GET", targetString, nil)
+	if err != nil {
+		c.log.Errorw("error creating request", "error", err)
 		return
 	}
 
+	// Tells the server to close the connection when done.
+	req.Close = true
+
+	resp, err := httpClient.Do(req)
+	latency := time.Since(rqStart)
+
+	// Handle timeouts and report error otherwise.
+	if err != nil {
+		if err, ok := err.(net.Error); ok && err.Timeout() {
+			c.log.Warnw("request timed out")
+
+			// Directly measuring timeouts because we only care about the point-in-time
+			// the request that timed out was sent.
+			c.statsMgr.DirectMeasurement("client.rq.timeout", rqStart, 0.0)
+		} else {
+			c.log.Errorw("request error", "error", err)
+		}
+		return
+	}
+	defer resp.Body.Close()
+
 	if resp.StatusCode == http.StatusOK {
 		c.statsMgr.DirectMeasurement("client.rq.latency", rqStart, float64(latency.Seconds()))
+		c.statsMgr.Incr("client.rq.success.count")
 	} else if resp.StatusCode == http.StatusServiceUnavailable {
 		c.statsMgr.DirectMeasurement("client.rq.503", rqStart, 0.0)
 	}

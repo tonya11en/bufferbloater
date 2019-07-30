@@ -7,7 +7,7 @@ compile:
 
 .PHONY: test
 test: compile
-	go test -race -cover .
+	go test -race -cover ./...
 
 .PHONY: install
 install:

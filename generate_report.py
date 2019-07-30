@@ -34,6 +34,7 @@ def xy_from_csv(filename):
 # simulation start.
 rq_rate_x, rq_rate_y = xy_from_csv("client.rps.csv")
 rq_latency_x, rq_latency_y = xy_from_csv("client.rq.latency.csv")
+rq_count_x, rq_count_y = xy_from_csv("client.rq.success.count.csv")
 qsize_x, qsize_y = xy_from_csv("server.queue.size.csv")
 timeout_stamps, _ = xy_from_csv("client.rq.timeout.csv")
 service_unavail_stamps, _ = xy_from_csv("client.rq.503.csv")
@@ -41,13 +42,14 @@ service_unavail_stamps, _ = xy_from_csv("client.rq.503.csv")
 sim_start = min(rq_rate_x + rq_latency_x + timeout_stamps)
 rq_rate_x = map(lambda x: (x - sim_start) / 1e9, rq_rate_x)
 rq_latency_x = map(lambda x: (x - sim_start) / 1e9, rq_latency_x)
+rq_count_x = map(lambda x: (x - sim_start) / 1e9, rq_count_x)
 qsize_x = map(lambda x: (x - sim_start) / 1e9, qsize_x)
 timeout_stamps = map(lambda x: (x - sim_start) / 1e9, timeout_stamps)
 service_unavail_stamps = map(lambda x: (x - sim_start) / 1e9, service_unavail_stamps)
 
 relative_sim_end = max(rq_rate_x + rq_latency_x + timeout_stamps + service_unavail_stamps + qsize_x)
 
-fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(5)
+fig, (ax1, ax2, ax3, ax4, ax5, ax6) = plt.subplots(6)
 
 ax1.set_xlabel('Time (s)')
 ax1.set_xlim([0,relative_sim_end])
@@ -80,6 +82,12 @@ ax5.set_xlim([0,relative_sim_end])
 ax5.set_ylabel('Service Queue Size')
 ax5.plot(qsize_x,qsize_y, '-')
 ax5.tick_params(axis='y', labelcolor="blue")
+
+ax6.set_xlabel('Time (s)')
+ax6.set_xlim([0,relative_sim_end])
+ax6.set_ylabel('Successful Request Count')
+ax6.plot(rq_count_x, rq_count_y, '-')
+ax6.tick_params(axis='y', labelcolor="blue")
 
 plt.legend()
 plt.show()

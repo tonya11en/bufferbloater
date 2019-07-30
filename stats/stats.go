@@ -69,6 +69,7 @@ func (s *StatsMgr) sample() {
 func (s *StatsMgr) DumpStatsToFolder(folderName string) error {
 	s.mtx.Lock()
 
+	os.RemoveAll(folderName)
 	os.MkdirAll(folderName, os.ModePerm)
 
 	for statName, sampleSlice := range s.sampleCollection {
