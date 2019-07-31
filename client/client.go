@@ -47,6 +47,7 @@ func NewClient(config Config, logger *zap.SugaredLogger, sm *stats.StatsMgr) *Cl
 }
 
 func (c *Client) sendWorkloadRequest() {
+	defer c.statsMgr.Incr("client.rq.total.count")
 	targetString := fmt.Sprintf("http://%s:%d", c.config.TargetServer.Address, c.config.TargetServer.Port)
 
 	rqStart := time.Now()
@@ -73,10 +74,11 @@ func (c *Client) sendWorkloadRequest() {
 
 			// Directly measuring timeouts because we only care about the point-in-time
 			// the request that timed out was sent.
-			c.statsMgr.DirectMeasurement("client.rq.timeout", rqStart, 0.0)
+			c.statsMgr.DirectMeasurement("client.rq.timeout", rqStart, 1.0)
 		} else {
 			c.log.Errorw("request error", "error", err)
 		}
+		c.statsMgr.Incr("client.rq.failure.count")
 		return
 	}
 	defer resp.Body.Close()
@@ -85,7 +87,8 @@ func (c *Client) sendWorkloadRequest() {
 		c.statsMgr.DirectMeasurement("client.rq.latency", rqStart, float64(latency.Seconds()))
 		c.statsMgr.Incr("client.rq.success.count")
 	} else if resp.StatusCode == http.StatusServiceUnavailable {
-		c.statsMgr.DirectMeasurement("client.rq.503", rqStart, 0.0)
+		c.statsMgr.DirectMeasurement("client.rq.503", rqStart, 1.0)
+		c.statsMgr.Incr("client.rq.failure.count")
 	}
 }
 

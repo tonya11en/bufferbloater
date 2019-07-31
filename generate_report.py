@@ -2,6 +2,7 @@
 
 import matplotlib.pyplot as plt
 import csv, sys, os
+import numpy as np
 
 if len(sys.argv) == 2:
     data_dir = sys.argv[1]
@@ -34,7 +35,7 @@ def xy_from_csv(filename):
 # simulation start.
 rq_rate_x, rq_rate_y = xy_from_csv("client.rps.csv")
 rq_latency_x, rq_latency_y = xy_from_csv("client.rq.latency.csv")
-rq_count_x, rq_count_y = xy_from_csv("client.rq.success.count.csv")
+rq_sr_x, rq_sr_y = xy_from_csv("client.rq.success_rate.csv")
 qsize_x, qsize_y = xy_from_csv("server.queue.size.csv")
 timeout_stamps, _ = xy_from_csv("client.rq.timeout.csv")
 service_unavail_stamps, _ = xy_from_csv("client.rq.503.csv")
@@ -42,7 +43,7 @@ service_unavail_stamps, _ = xy_from_csv("client.rq.503.csv")
 sim_start = min(rq_rate_x + rq_latency_x + timeout_stamps)
 rq_rate_x = map(lambda x: (x - sim_start) / 1e9, rq_rate_x)
 rq_latency_x = map(lambda x: (x - sim_start) / 1e9, rq_latency_x)
-rq_count_x = map(lambda x: (x - sim_start) / 1e9, rq_count_x)
+rq_sr_x = map(lambda x: (x - sim_start) / 1e9, rq_sr_x)
 qsize_x = map(lambda x: (x - sim_start) / 1e9, qsize_x)
 timeout_stamps = map(lambda x: (x - sim_start) / 1e9, timeout_stamps)
 service_unavail_stamps = map(lambda x: (x - sim_start) / 1e9, service_unavail_stamps)
@@ -74,8 +75,11 @@ for stamp in timeout_stamps:
 ax4.set_ylabel("Request 503s")
 ax4.set_xlabel('Time (s)')
 ax4.set_xlim([0,relative_sim_end])
-for v in service_unavail_stamps:
-    ax4.axvline(x=v, color="green")
+if len(service_unavail_stamps) > 0:
+    bins = np.arange(0, relative_sim_end, 0.01)
+    hist, _ = np.histogram(service_unavail_stamps, bins)
+    extent = [bins.min(), bins.max(), 0, 1]
+    ax4.hist(service_unavail_stamps, bins=1000, range=(0,relative_sim_end))
 
 ax5.set_xlabel('Time (s)')
 ax5.set_xlim([0,relative_sim_end])
@@ -85,8 +89,8 @@ ax5.tick_params(axis='y', labelcolor="blue")
 
 ax6.set_xlabel('Time (s)')
 ax6.set_xlim([0,relative_sim_end])
-ax6.set_ylabel('Successful Request Count')
-ax6.plot(rq_count_x, rq_count_y, '-')
+ax6.set_ylabel('Request Success Rate')
+ax6.plot(rq_sr_x, rq_sr_y, '-')
 ax6.tick_params(axis='y', labelcolor="blue")
 
 plt.legend()
