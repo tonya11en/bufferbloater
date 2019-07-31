@@ -2,6 +2,7 @@ package stats
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"sync"
 	"time"
@@ -28,11 +29,13 @@ type StatsMgr struct {
 }
 
 func NewStatsMgrImpl(logger *zap.SugaredLogger) *StatsMgr {
-	return &StatsMgr{
+	ret := &StatsMgr{
 		statsVals:        make(map[string]float64),
 		sampleCollection: make(map[string][]Sample),
 		log:              logger,
 	}
+	ret.sampleCollection["client.rq.success_rate"] = []Sample{}
+	return ret
 }
 
 func (s *StatsMgr) Set(k string, val float64) {
@@ -58,11 +61,20 @@ func (s *StatsMgr) DirectMeasurement(k string, t time.Time, val float64) {
 
 func (s *StatsMgr) sample() {
 	s.mtx.Lock()
+	now := time.Now()
+
+	// Derive success rate.
+	// TODO: the stats need to be less hacky. rethink all of this.
+	sr := s.statsVals["client.rq.success.count"] / math.Max(s.statsVals["client.rq.total.count"], 1.0)
+	s.statsVals["client.rq.success_rate"] = sr
+
 	for statName, val := range s.statsVals {
 		s.sampleCollection[statName] =
 			append(s.sampleCollection[statName],
-				Sample{timestamp: time.Now(), val: val})
+				Sample{timestamp: now, val: val})
 	}
+	s.statsVals["client.rq.success.count"] = 0.0
+	s.statsVals["client.rq.total.count"] = 0.0
 	s.mtx.Unlock()
 }
 
