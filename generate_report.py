@@ -68,8 +68,11 @@ ax2.tick_params(axis='y', labelcolor="blue")
 ax3.set_ylabel("Request Timeouts")
 ax3.set_xlabel('Time (s)')
 ax3.set_xlim([0,relative_sim_end])
-for stamp in timeout_stamps:
-    ax3.axvline(x=stamp, color="red")
+if len(timeout_stamps) > 0:
+    bins = np.arange(0, relative_sim_end, 0.01)
+    hist, _ = np.histogram(timeout_stamps, bins)
+    extent = [bins.min(), bins.max(), 0, 1]
+    ax3.hist(timeout_stamps, bins=1000, range=(0,relative_sim_end), color="red")
 
 # Get 503 vertical lines.
 ax4.set_ylabel("Request 503s")
@@ -79,7 +82,7 @@ if len(service_unavail_stamps) > 0:
     bins = np.arange(0, relative_sim_end, 0.01)
     hist, _ = np.histogram(service_unavail_stamps, bins)
     extent = [bins.min(), bins.max(), 0, 1]
-    ax4.hist(service_unavail_stamps, bins=1000, range=(0,relative_sim_end))
+    ax4.hist(service_unavail_stamps, bins=1000, range=(0,relative_sim_end), color="green")
 
 ax5.set_xlabel('Time (s)')
 ax5.set_xlim([0,relative_sim_end])
