@@ -48,7 +48,9 @@ qsize_x = map(lambda x: (x - sim_start) / 1e9, qsize_x)
 timeout_stamps = map(lambda x: (x - sim_start) / 1e9, timeout_stamps)
 service_unavail_stamps = map(lambda x: (x - sim_start) / 1e9, service_unavail_stamps)
 
-relative_sim_end = max(rq_rate_x + rq_latency_x + timeout_stamps + service_unavail_stamps + qsize_x)
+relative_sim_end = max(rq_latency_x + timeout_stamps + service_unavail_stamps)
+rq_sr_x = map(lambda x: x * (1.0 * relative_sim_end / rq_sr_x[-1]), rq_sr_x)
+qsize_x = map(lambda x: x * (1.0 * relative_sim_end / qsize_x[-1]), qsize_x)
 
 fig, (ax1, ax2, ax3, ax4, ax5, ax6) = plt.subplots(6)
 
