@@ -57,4 +57,7 @@ CSV files are created for each run and placed in a folder called `data`. If
 files already exist in that folder, they will be overwritten. The bufferbloater
 will only create files if there is data that needs to be written to it.
 
-There is a lot of polish left to do in this area.
+There is a lot of polish left to do in this area. An example graph can be found
+below.
+
+![](images/oss_noacc.png)
