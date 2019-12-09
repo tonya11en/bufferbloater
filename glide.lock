@@ -1,20 +1,81 @@
 hash: 36b07eddfa469660912aaa9d846fc5742e5c9e3acf4b2d8753101d2af54ef30c
-updated: 2019-07-20T18:54:34.098189675-07:00
+updated: 2019-12-08T21:54:21.508431641-08:00
 imports:
+- name: github.com/BurntSushi/toml
+  version: 3012a1dbe2e4bd1391d42b32f0577cb7bbc7f005
 - name: go.uber.org/atomic
-  version: df976f2515e274675050de7b3f42545de80594fd
+  version: 40ae6a40a970ef4cdbffa7b24b280e316db8accc
 - name: go.uber.org/multierr
-  version: 3c4937480c32f4c13a875a1829af76c98ca3d40a
+  version: 0603dab38513015f56e2fc4ae9cf278664de80ea
+- name: go.uber.org/tools
+  version: 2cfd321de3ee5d5f8a5fda2521d1703478334d98
+  subpackages:
+  - update-license
 - name: go.uber.org/zap
-  version: 9a9fa7d4b5f07a9b634983678a65b5525f81e58b
+  version: 33e58d4d0120aa28d4df84cd244838c490846c9d
   subpackages:
   - buffer
   - internal/bufferpool
   - internal/color
   - internal/exit
   - zapcore
+- name: golang.org/x/lint
+  version: fdd1cda4f05fd1fd86124f0ef9ce31a0b72c8448
+  subpackages:
+  - golint
+- name: golang.org/x/tools
+  version: 259af5ff87bdcd4abf2ecda8edc3f13f04f26a42
+  subpackages:
+  - go/analysis
+  - go/analysis/passes/inspect
+  - go/ast/astutil
+  - go/ast/inspector
+  - go/buildutil
+  - go/gcexportdata
+  - go/internal/cgo
+  - go/internal/gcimporter
+  - go/internal/packagesdriver
+  - go/loader
+  - go/packages
+  - go/types/objectpath
+  - go/types/typeutil
+  - internal/fastwalk
+  - internal/gopathwalk
+  - internal/semver
 - name: gopkg.in/yaml.v2
-  version: 51d6538a90f86fe93ac480b35f37b2be17fef232
+  version: 1f64d6156d11335c3f22d9330b0ad14fc1e789ce
+- name: honnef.co/go/tools
+  version: 32de78dc1c6c931f2bf017870750b0ca80006601
+  subpackages:
+  - arg
+  - cmd/staticcheck
+  - code
+  - config
+  - deprecated
+  - edit
+  - facts
+  - functions
+  - go/types/typeutil
+  - internal/cache
+  - internal/passes/buildir
+  - internal/renameio
+  - internal/robustio
+  - internal/sharedcheck
+  - ir
+  - ir/irutil
+  - lint
+  - lint/lintdsl
+  - lint/lintutil
+  - lint/lintutil/format
+  - loader
+  - pattern
+  - printf
+  - report
+  - simple
+  - staticcheck
+  - stylecheck
+  - unused
+  - version
 testImports:
 - name: github.com/davecgh/go-spew
   version: d8f796af33cc11cb798c1aaeb27a4ebc5099927d
@@ -25,6 +86,6 @@ testImports:
   subpackages:
   - difflib
 - name: github.com/stretchr/testify
-  version: 221dbe5ed46703ee255b1da0dec05086f5035f62
+  version: 7009337cb5726e58a8444528a492b85d111bc1a5
   subpackages:
   - assert

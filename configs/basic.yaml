@@ -1,25 +1,23 @@
 client:
   workload:
     - rps: 100
-      duration: 60s
+      duration: 20s
     - rps: 110
-      duration: 10s
+      duration: 5s
     - rps: 120
-      duration: 10s
+      duration: 5s
     - rps: 130
-      duration: 10s
+      duration: 5s
     - rps: 140
-      duration: 10s
-    - rps: 150
-      duration: 60s
+      duration: 20s
   rq_timeout: 1s
   target_server:
     address: 0.0.0.0
-    port: 9001
-    #    port: 9002
+    # port: 9001
+    port: 9002
 server:
   profile:
-    - duration: 160s
+    - duration: 55s
       latency_distribution:
       - weight: 90
         latency: 50ms
