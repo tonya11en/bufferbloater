@@ -46,10 +46,12 @@ type Server struct {
 	srv            *http.Server
 	mux            *http.ServeMux
 	statsMgr       *stats.StatsMgr
+	uuid           int
+	queueSize      int32
+	statPrefix     string
 
 	// Only allow a certain number of requests to be serviced (sleeped) at a time.
-	sem       chan struct{}
-	queueSize int32
+	sem chan struct{}
 
 	// This is relevant for determining where we are time-wise in the simulation.
 	startTime time.Time
@@ -62,7 +64,10 @@ func NewServer(config Config, logger *zap.SugaredLogger, sm *stats.StatsMgr) *Se
 		mux:      http.NewServeMux(),
 		sem:      make(chan struct{}, config.Threads),
 		statsMgr: sm,
+		uuid:     int(config.ListenPort),
 	}
+
+	s.statPrefix = "server." + strconv.Itoa(s.uuid) + "."
 
 	// Load up the semaphore with tickets.
 	for i := 0; i < int(config.Threads); i++ {
@@ -72,7 +77,7 @@ func NewServer(config Config, logger *zap.SugaredLogger, sm *stats.StatsMgr) *Se
 	s.srv = &http.Server{
 		Addr:        ":" + strconv.Itoa(int(s.config.ListenPort)),
 		Handler:     s.mux,
-		ReadTimeout: 10 * time.Second,
+		ReadTimeout: 1 * time.Second,
 	}
 
 	logger.Infow("done creating server",
@@ -133,6 +138,8 @@ func (s *Server) requestHandler(w http.ResponseWriter, req *http.Request) {
 		progress: 0 * time.Nanosecond,
 	}
 
+	s.statsMgr.Incr(s.statPrefix + "rq_count")
+
 	sz := atomic.AddInt32(&s.queueSize, 1)
 
 	// This is the "servicing" of a request. The semaphore asserts the
@@ -150,13 +157,15 @@ func (s *Server) requestHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	sz = atomic.AddInt32(&s.queueSize, -1)
-	s.statsMgr.Set("server.queue.size", float64(sz))
+	s.statsMgr.Set(s.statPrefix+"queue.size", float64(sz))
 
 	return
 }
 
 func (s *Server) Start(wg *sync.WaitGroup) {
 	defer wg.Done()
+
+	s.log.Infof("starting server on port %d", s.config.ListenPort)
 
 	s.mux.HandleFunc("/", s.requestHandler)
 
@@ -169,8 +178,7 @@ func (s *Server) Start(wg *sync.WaitGroup) {
 	s.startTime = time.Now()
 
 	if err := s.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		s.log.Fatalw("server error",
-			"error", err)
+		s.log.Fatalw("server error", "error", err)
 	}
 
 	// Wait for shutdown to occur.

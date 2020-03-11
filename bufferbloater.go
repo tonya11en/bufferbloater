@@ -16,7 +16,7 @@ import (
 type Bufferbloater struct {
 	log      *zap.SugaredLogger
 	c        *client.Client
-	s        *server.Server
+	srvrs    []*server.Server
 	statsMgr *stats.StatsMgr
 }
 
@@ -42,8 +42,9 @@ type parsedYamlConfig struct {
 			} `yaml:"latency_distribution"`
 			Duration string
 		} `yaml:"profile"`
-		ListenPort uint `yaml:"listen_port"`
-		Threads    uint `yaml:"threads"`
+		ListenPort  uint `yaml:"listen_port"`
+		Threads     uint `yaml:"threads"`
+		ServerCount uint `yaml:"server_count"`
 	}
 }
 
@@ -161,7 +162,12 @@ func NewBufferbloater(configFilename string, logger *zap.SugaredLogger) (*Buffer
 		bb.log.Fatalw("failed to create server config",
 			"error", err)
 	}
-	bb.s = server.NewServer(serverConfig, logger, bb.statsMgr)
+
+	for i := uint(0); i < parsedConfig.Server.ServerCount; i++ {
+		config := serverConfig
+		config.ListenPort = config.ListenPort + uint(i)
+		bb.srvrs = append(bb.srvrs, server.NewServer(config, logger, bb.statsMgr))
+	}
 
 	return &bb, nil
 }
@@ -176,9 +182,16 @@ func (bb *Bufferbloater) Run() {
 	go bb.statsMgr.PeriodicStatsCollection(100*time.Millisecond, stopStats, &statsWg)
 
 	var wg sync.WaitGroup
-	wg.Add(2)
-	go bb.s.Start(&wg)
+
+	// Spin up multiple servers.
+	for _, s := range bb.srvrs {
+		wg.Add(1)
+		go s.Start(&wg)
+	}
+
+	wg.Add(1)
 	go bb.c.Start(&wg)
+
 	wg.Wait()
 
 	stopStats <- struct{}{}

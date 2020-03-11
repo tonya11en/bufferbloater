@@ -88,13 +88,13 @@ if len(service_unavail_stamps) > 0:
 
 ax5.set_xlabel('Time (s)')
 ax5.set_xlim([0,relative_sim_end])
-ax5.set_ylabel('Service Queue Size')
+ax5.set_ylabel('Queue Size')
 ax5.plot(qsize_x,qsize_y, '-')
 ax5.tick_params(axis='y', labelcolor="blue")
 
 ax6.set_xlabel('Time (s)')
 ax6.set_xlim([0,relative_sim_end])
-ax6.set_ylabel('Request Success Rate')
+ax6.set_ylabel('Success Rate')
 ax6.plot(rq_sr_x, rq_sr_y, '-')
 ax6.tick_params(axis='y', labelcolor="blue")
 
