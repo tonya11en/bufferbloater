@@ -34,7 +34,8 @@ func NewStatsMgrImpl(logger *zap.SugaredLogger) *StatsMgr {
 		sampleCollection: make(map[string][]Sample),
 		log:              logger,
 	}
-	ret.sampleCollection["client.rq.success_rate"] = []Sample{}
+	ret.sampleCollection["client1.rq.success_rate"] = []Sample{}
+	ret.sampleCollection["client2.rq.success_rate"] = []Sample{}
 	return ret
 }
 
@@ -65,16 +66,21 @@ func (s *StatsMgr) sample() {
 
 	// Derive success rate.
 	// TODO: the stats need to be less hacky. rethink all of this.
-	sr := s.statsVals["client.rq.success.count"] / math.Max(s.statsVals["client.rq.total.count"], 1.0)
-	s.statsVals["client.rq.success_rate"] = sr
+	// @tallen extra hacky for queues
+	sr := s.statsVals["client1.rq.success.count"] / math.Max(s.statsVals["client1.rq.total.count"], 1.0)
+	s.statsVals["client1.rq.success_rate"] = sr
+	sr = s.statsVals["client2.rq.success.count"] / math.Max(s.statsVals["client2.rq.total.count"], 1.0)
+	s.statsVals["client2.rq.success_rate"] = sr
 
 	for statName, val := range s.statsVals {
 		s.sampleCollection[statName] =
 			append(s.sampleCollection[statName],
 				Sample{timestamp: now, val: val})
 	}
-	s.statsVals["client.rq.success.count"] = 0.0
-	s.statsVals["client.rq.total.count"] = 0.0
+	s.statsVals["client1.rq.success.count"] = 0.0
+	s.statsVals["client1.rq.total.count"] = 0.0
+	s.statsVals["client2.rq.success.count"] = 0.0
+	s.statsVals["client2.rq.total.count"] = 0.0
 	s.mtx.Unlock()
 }
 

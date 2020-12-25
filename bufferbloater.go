@@ -15,14 +15,15 @@ import (
 
 type Bufferbloater struct {
 	log      *zap.SugaredLogger
-	c        *client.Client
+	c1       *client.Client
+	c2       *client.Client
 	s        *server.Server
 	statsMgr *stats.StatsMgr
 }
 
 // Basic representation of the parsed yaml file before the durations are parsed.
 type parsedYamlConfig struct {
-	Client struct {
+	Client []struct {
 		Workload []struct {
 			Rps      uint
 			Duration string
@@ -42,29 +43,32 @@ type parsedYamlConfig struct {
 			} `yaml:"latency_distribution"`
 			Duration string
 		} `yaml:"profile"`
-		ListenPort uint `yaml:"listen_port"`
-		Threads    uint `yaml:"threads"`
+		ListenPort   uint   `yaml:"listen_port"`
+		Threads      uint   `yaml:"threads"`
+		MaxQueueSize uint   `yaml:"max_queue_size"`
+		MaxActiveRq  uint   `yaml:"max_active_rq"`
+		QueueTimeout string `yaml:"queue_timeout"`
 	}
 }
 
 // Creates a properly typed client config.
-func clientConfigParse(parsedConfig parsedYamlConfig) (client.Config, error) {
+func clientConfigParse(parsedConfig parsedYamlConfig, idx uint) (client.Config, error) {
 	// TODO: validate config
 
 	clientConfig := client.Config{
 		TargetServer: client.Target{
-			Address: parsedConfig.Client.TargetServer.Address,
-			Port:    parsedConfig.Client.TargetServer.Port,
+			Address: parsedConfig.Client[idx].TargetServer.Address,
+			Port:    parsedConfig.Client[idx].TargetServer.Port,
 		},
 	}
 
-	d, err := time.ParseDuration(parsedConfig.Client.RqTimeout)
+	d, err := time.ParseDuration(parsedConfig.Client[idx].RqTimeout)
 	if err != nil {
 		return client.Config{}, err
 	}
 	clientConfig.RequestTimeout = d
 
-	for _, stage := range parsedConfig.Client.Workload {
+	for _, stage := range parsedConfig.Client[idx].Workload {
 		d, err := time.ParseDuration(stage.Duration)
 		if err != nil {
 			return client.Config{}, err
@@ -84,9 +88,17 @@ func serverConfigParse(parsedConfig parsedYamlConfig) (server.Config, error) {
 	// TODO: validate config
 
 	serverConfig := server.Config{
-		ListenPort: parsedConfig.Server.ListenPort,
-		Threads:    parsedConfig.Server.Threads,
+		ListenPort:   parsedConfig.Server.ListenPort,
+		Threads:      parsedConfig.Server.Threads,
+		MaxActiveRq:  parsedConfig.Server.MaxActiveRq,
+		MaxQueueSize: parsedConfig.Server.MaxQueueSize,
 	}
+
+	qtimeout, err := time.ParseDuration(parsedConfig.Server.QueueTimeout)
+	if err != nil {
+		return server.Config{}, err
+	}
+	serverConfig.QueueTimeout = qtimeout
 
 	for _, segment := range parsedConfig.Server.Profile {
 		s := server.LatencySegment{}
@@ -149,12 +161,18 @@ func NewBufferbloater(configFilename string, logger *zap.SugaredLogger) (*Buffer
 			"error", err)
 	}
 
-	clientConfig, err := clientConfigParse(parsedConfig)
+	clientConfig1, err := clientConfigParse(parsedConfig, 0)
 	if err != nil {
-		bb.log.Fatalw("failed to create server config",
+		bb.log.Fatalw("failed to create client config",
 			"error", err)
 	}
-	bb.c = client.NewClient(clientConfig, logger, bb.statsMgr)
+	clientConfig2, err := clientConfigParse(parsedConfig, 1)
+	if err != nil {
+		bb.log.Fatalw("failed to create client config",
+			"error", err)
+	}
+	bb.c1 = client.NewClient(clientConfig1, logger, bb.statsMgr, "1")
+	bb.c2 = client.NewClient(clientConfig2, logger, bb.statsMgr, "2")
 
 	serverConfig, err := serverConfigParse(parsedConfig)
 	if err != nil {
@@ -176,9 +194,10 @@ func (bb *Bufferbloater) Run() {
 	go bb.statsMgr.PeriodicStatsCollection(100*time.Millisecond, stopStats, &statsWg)
 
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(3)
 	go bb.s.Start(&wg)
-	go bb.c.Start(&wg)
+	go bb.c1.Start(&wg)
+	go bb.c2.Start(&wg)
 	wg.Wait()
 
 	stopStats <- struct{}{}

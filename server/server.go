@@ -27,16 +27,26 @@ type LatencySegment struct {
 }
 
 type Config struct {
-	Profile    []LatencySegment
-	ListenPort uint
-	Threads    uint
+	Profile      []LatencySegment
+	ListenPort   uint
+	Threads      uint
+	MaxActiveRq  uint
+	MaxQueueSize uint
+	QueueTimeout time.Duration
 }
 
-type request struct {
+type Rq struct {
 	// When the request came in.
 	rcvTime time.Time
 
+	// How much "service time" it's received.
 	progress time.Duration
+
+	// Whether the request is done and a response can be given.
+	done chan struct{}
+
+	w   http.ResponseWriter
+	req *http.Request
 }
 
 type Server struct {
@@ -48,8 +58,10 @@ type Server struct {
 	statsMgr       *stats.StatsMgr
 
 	// Only allow a certain number of requests to be serviced (sleeped) at a time.
-	sem       chan struct{}
-	queueSize int32
+	sem      chan struct{}
+	activeRq int32
+
+	fifo chan Rq
 
 	// This is relevant for determining where we are time-wise in the simulation.
 	startTime time.Time
@@ -62,11 +74,11 @@ func NewServer(config Config, logger *zap.SugaredLogger, sm *stats.StatsMgr) *Se
 		mux:      http.NewServeMux(),
 		sem:      make(chan struct{}, config.Threads),
 		statsMgr: sm,
+		fifo:     make(chan Rq, config.MaxQueueSize),
 	}
 
-	// Load up the semaphore with tickets.
 	for i := 0; i < int(config.Threads); i++ {
-		s.sem <- struct{}{}
+		go s.worker()
 	}
 
 	s.srv = &http.Server{
@@ -127,30 +139,67 @@ func (s *Server) currentRequestLatency() time.Duration {
 	return sleepTime
 }
 
+func (s *Server) handleOverload(w http.ResponseWriter, req *http.Request) {
+	w.WriteHeader(http.StatusServiceUnavailable)
+}
+
 func (s *Server) requestHandler(w http.ResponseWriter, req *http.Request) {
-	rq := request{
+	rq := Rq{
 		rcvTime:  time.Now(),
 		progress: 0 * time.Nanosecond,
+		done:     make(chan struct{}, 1),
+		w:        w,
+		req:      req,
 	}
 
-	sz := atomic.AddInt32(&s.queueSize, 1)
+	tenantId := req.Header.Get("tenant-id")
+	s.log.Infof("handling request", "tenant-id", tenantId)
 
-	// This is the "servicing" of a request. The semaphore asserts the
-	// concurrency.
+	select {
+	case s.fifo <- rq:
+		<-rq.done
+		break
+	default:
+		s.handleOverload(w, req)
+		break
+	}
+
+	s.statsMgr.Set("server.queued_rq", float64(len(s.fifo)))
+}
+
+func (s *Server) worker() {
+	for {
+		s.doWork(<-s.fifo)
+	}
+}
+
+func (s *Server) doWork(rq Rq) {
+	defer func() {
+		rq.done <- struct{}{}
+	}()
+
+	if (s.config.QueueTimeout > 0) && (time.Now().Sub(rq.rcvTime) > s.config.QueueTimeout) {
+		// Timed out. Don't service this.
+		s.handleOverload(rq.w, rq.req)
+		s.statsMgr.Incr("server.queue_timeout")
+		return
+	}
+
+	sz := atomic.AddInt32(&s.activeRq, 1)
+	s.statsMgr.Set("server.active_rq", float64(sz))
+
 	crl := s.currentRequestLatency()
 	workDuration := 500 * time.Microsecond
 	for rq.progress < crl {
-		<-s.sem
 		// Hard-coding the amount of time a rq is "worked" on.
 		// TODO: make this configurable if needed, avoiding now because too many
 		// knobs.
 		time.Sleep(workDuration)
-		s.sem <- struct{}{}
 		rq.progress += workDuration
 	}
 
-	sz = atomic.AddInt32(&s.queueSize, -1)
-	s.statsMgr.Set("server.queue.size", float64(sz))
+	sz = atomic.AddInt32(&s.activeRq, -1)
+	s.statsMgr.Set("server.active_rq", float64(sz))
 
 	return
 }

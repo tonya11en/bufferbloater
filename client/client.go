@@ -31,13 +31,15 @@ type Client struct {
 	config   Config
 	log      *zap.SugaredLogger
 	statsMgr *stats.StatsMgr
+	idx      string
 }
 
-func NewClient(config Config, logger *zap.SugaredLogger, sm *stats.StatsMgr) *Client {
+func NewClient(config Config, logger *zap.SugaredLogger, sm *stats.StatsMgr, idx string) *Client {
 	c := Client{
 		config:   config,
 		log:      logger,
 		statsMgr: sm,
+		idx:      idx,
 	}
 
 	logger.Infow("done creating client",
@@ -47,7 +49,7 @@ func NewClient(config Config, logger *zap.SugaredLogger, sm *stats.StatsMgr) *Cl
 }
 
 func (c *Client) sendWorkloadRequest() {
-	defer c.statsMgr.Incr("client.rq.total.count")
+	defer c.statsMgr.Incr(fmt.Sprintf("client%s.rq.total.count", c.idx))
 	targetString := fmt.Sprintf("http://%s:%d", c.config.TargetServer.Address, c.config.TargetServer.Port)
 
 	rqStart := time.Now()
@@ -60,6 +62,7 @@ func (c *Client) sendWorkloadRequest() {
 		c.log.Errorw("error creating request", "error", err)
 		return
 	}
+	req.Header.Add("tenant-id", c.idx)
 
 	// Tells the server to close the connection when done.
 	req.Close = true
@@ -74,26 +77,26 @@ func (c *Client) sendWorkloadRequest() {
 
 			// Directly measuring timeouts because we only care about the point-in-time
 			// the request that timed out was sent.
-			c.statsMgr.DirectMeasurement("client.rq.timeout", rqStart, 1.0)
+			c.statsMgr.DirectMeasurement(fmt.Sprintf("client%s.rq.timeout", c.idx), rqStart, 1.0)
 		} else {
 			c.log.Errorw("request error", "error", err)
 		}
-		c.statsMgr.Incr("client.rq.failure.count")
+		c.statsMgr.Incr(fmt.Sprintf("client%s.rq.failure.count", c.idx))
 		return
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
-		c.statsMgr.DirectMeasurement("client.rq.latency", rqStart, float64(latency.Seconds()))
-		c.statsMgr.Incr("client.rq.success.count")
+		c.statsMgr.DirectMeasurement(fmt.Sprintf("client%s.rq.latency", c.idx), rqStart, float64(latency.Seconds()))
+		c.statsMgr.Incr(fmt.Sprintf("client%s.rq.success.count", c.idx))
 	} else if resp.StatusCode == http.StatusServiceUnavailable {
-		c.statsMgr.DirectMeasurement("client.rq.503", rqStart, 1.0)
-		c.statsMgr.Incr("client.rq.failure.count")
+		c.statsMgr.DirectMeasurement(fmt.Sprintf("client%s.rq.503", c.idx), rqStart, 1.0)
+		c.statsMgr.Incr(fmt.Sprintf("client%s.rq.failure.count", c.idx))
 	}
 }
 
 func (c *Client) processWorkloadStage(ws WorkloadStage) {
-	c.statsMgr.Set("client.rps", float64(ws.RPS))
+	c.statsMgr.Set(fmt.Sprintf("client%s.rps", c.idx), float64(ws.RPS))
 
 	// Divide the requests/sec evenly into the duration of this stage. We can cast
 	// an integral type to a time.Duration since time.Duration is an int64 behind

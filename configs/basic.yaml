@@ -1,23 +1,23 @@
 client:
-  workload:
-    - rps: 100
-      duration: 20s
-    - rps: 110
-      duration: 5s
-    - rps: 120
-      duration: 5s
-    - rps: 130
-      duration: 5s
-    - rps: 140
-      duration: 20s
-  rq_timeout: 1s
-  target_server:
-    address: 0.0.0.0
-    # port: 9001
-    port: 9002
+  - workload:
+      - rps: 50
+        duration: 5s
+      - rps: 400
+        duration: 5s
+    rq_timeout: 1s
+    target_server:
+      address: 0.0.0.0
+      port: 9002
+  - workload:
+      - rps: 50
+        duration: 10s
+    rq_timeout: 1s
+    target_server:
+      address: 0.0.0.0
+      port: 9002
 server:
   profile:
-    - duration: 55s
+    - duration: 10s
       latency_distribution:
       - weight: 90
         latency: 50ms
@@ -29,3 +29,6 @@ server:
         latency: 150ms
   listen_port: 9002
   threads: 8
+  max_queue_size: 1000
+  max_active_rq: 50
+  queue_timeout: 10ms # 0 means no timeout
