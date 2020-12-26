@@ -90,7 +90,6 @@ qsize_x = adjust_x_val_ends(qsize_x)
 
 fig, (ax1, ax2, ax3, ax4, ax5, ax6) = plt.subplots(6)
 
-print(rq_latency_x1)
 ax1.set_xlabel('Time (s)')
 ax1.set_xlim([0,relative_sim_end])
 ax1.set_ylabel('Request Latency')
