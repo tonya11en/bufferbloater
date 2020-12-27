@@ -84,7 +84,7 @@ func (c *Client) sendWorkloadRequest() {
 		c.statsMgr.Incr(fmt.Sprintf("client%s.rq.failure.count", c.idx))
 		return
 	}
-	defer resp.Body.Close()
+	resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
 		c.statsMgr.DirectMeasurement(fmt.Sprintf("client%s.rq.latency", c.idx), rqStart, float64(latency.Seconds()))

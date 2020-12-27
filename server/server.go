@@ -27,12 +27,13 @@ type LatencySegment struct {
 }
 
 type Config struct {
-	Profile      []LatencySegment
-	ListenPort   uint
-	Threads      uint
-	MaxActiveRq  uint
-	MaxQueueSize uint
-	QueueTimeout time.Duration
+	Profile         []LatencySegment
+	ListenPort      uint
+	Threads         uint
+	MaxActiveRq     uint
+	MaxQueueSize    uint
+	QueueTimeout    time.Duration
+	EnableIsolation bool
 }
 
 type Rq struct {
@@ -54,14 +55,14 @@ type Server struct {
 	log            *zap.SugaredLogger
 	activeRequests int32
 	srv            *http.Server
+	ctx            context.Context
 	mux            *http.ServeMux
 	statsMgr       *stats.StatsMgr
+	tq             *TenantQueue
 
 	// Only allow a certain number of requests to be serviced (sleeped) at a time.
 	sem      chan struct{}
 	activeRq int32
-
-	fifo chan Rq
 
 	// This is relevant for determining where we are time-wise in the simulation.
 	startTime time.Time
@@ -74,10 +75,17 @@ func NewServer(config Config, logger *zap.SugaredLogger, sm *stats.StatsMgr) *Se
 		mux:      http.NewServeMux(),
 		sem:      make(chan struct{}, config.Threads),
 		statsMgr: sm,
-		fifo:     make(chan Rq, config.MaxQueueSize),
+		tq:       NewTenantQueue(config.MaxQueueSize),
 	}
 
+	serverLifetime := 0 * time.Second
+	for _, segment := range config.Profile {
+		serverLifetime += segment.SegmentDuration
+	}
+	s.ctx, _ = context.WithTimeout(context.Background(), serverLifetime)
+
 	for i := 0; i < int(config.Threads); i++ {
+		logger.Infow("spawning worker thread...")
 		go s.worker()
 	}
 
@@ -106,7 +114,7 @@ func (s *Server) DelayedShutdown(wg *sync.WaitGroup) {
 
 	s.log.Infow("gracefully shutting down",
 		"service_length", delay)
-	s.srv.Shutdown(context.Background())
+	s.srv.Shutdown(s.ctx)
 	s.log.Infow("graceful shutdown complete")
 }
 
@@ -144,7 +152,7 @@ func (s *Server) handleOverload(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) requestHandler(w http.ResponseWriter, req *http.Request) {
-	rq := Rq{
+	rq := &Rq{
 		rcvTime:  time.Now(),
 		progress: 0 * time.Nanosecond,
 		done:     make(chan struct{}, 1),
@@ -153,27 +161,36 @@ func (s *Server) requestHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	tenantId := req.Header.Get("tenant-id")
-	s.log.Infof("handling request", "tenant-id", tenantId)
+	s.log.Infof("handling request", "tenant-id", tenantId, "isolation", s.config.EnableIsolation)
 
-	select {
-	case s.fifo <- rq:
-		<-rq.done
-		break
-	default:
-		s.handleOverload(w, req)
-		break
+	// TODO: make this runtime configurable
+	if !s.config.EnableIsolation {
+		tenantId = ""
 	}
 
-	s.statsMgr.Set("server.queued_rq", float64(len(s.fifo)))
+	successful, qsize := s.tq.Push(tenantId, rq)
+	if !successful {
+		s.handleOverload(w, req)
+	}
+
+	<-rq.done
+
+	s.statsMgr.Set("server.queued_rq", float64(qsize))
 }
 
 func (s *Server) worker() {
 	for {
-		s.doWork(<-s.fifo)
+		rq := s.tq.Pop(s.ctx)
+		select {
+		case <-s.ctx.Done():
+			return
+		default:
+			s.doWork(rq)
+		}
 	}
 }
 
-func (s *Server) doWork(rq Rq) {
+func (s *Server) doWork(rq *Rq) {
 	defer func() {
 		rq.done <- struct{}{}
 	}()

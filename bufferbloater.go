@@ -2,6 +2,9 @@ package main
 
 import (
 	"io/ioutil"
+	"net/http"
+	_ "net/http/pprof"
+	"runtime"
 	"sync"
 	"time"
 
@@ -43,11 +46,12 @@ type parsedYamlConfig struct {
 			} `yaml:"latency_distribution"`
 			Duration string
 		} `yaml:"profile"`
-		ListenPort   uint   `yaml:"listen_port"`
-		Threads      uint   `yaml:"threads"`
-		MaxQueueSize uint   `yaml:"max_queue_size"`
-		MaxActiveRq  uint   `yaml:"max_active_rq"`
-		QueueTimeout string `yaml:"queue_timeout"`
+		ListenPort      uint   `yaml:"listen_port"`
+		Threads         uint   `yaml:"threads"`
+		MaxQueueSize    uint   `yaml:"max_queue_size"`
+		MaxActiveRq     uint   `yaml:"max_active_rq"`
+		QueueTimeout    string `yaml:"queue_timeout"`
+		EnableIsolation bool   `yaml:"enable_isolation"`
 	}
 }
 
@@ -88,10 +92,11 @@ func serverConfigParse(parsedConfig parsedYamlConfig) (server.Config, error) {
 	// TODO: validate config
 
 	serverConfig := server.Config{
-		ListenPort:   parsedConfig.Server.ListenPort,
-		Threads:      parsedConfig.Server.Threads,
-		MaxActiveRq:  parsedConfig.Server.MaxActiveRq,
-		MaxQueueSize: parsedConfig.Server.MaxQueueSize,
+		ListenPort:      parsedConfig.Server.ListenPort,
+		Threads:         parsedConfig.Server.Threads,
+		MaxActiveRq:     parsedConfig.Server.MaxActiveRq,
+		MaxQueueSize:    parsedConfig.Server.MaxQueueSize,
+		EnableIsolation: parsedConfig.Server.EnableIsolation,
 	}
 
 	qtimeout, err := time.ParseDuration(parsedConfig.Server.QueueTimeout)
@@ -187,6 +192,12 @@ func NewBufferbloater(configFilename string, logger *zap.SugaredLogger) (*Buffer
 func (bb *Bufferbloater) Run() {
 	// TODO: make folder configurable.
 	defer bb.statsMgr.DumpStatsToFolder("data")
+
+	// Setup profiling.
+	go func() {
+		runtime.SetMutexProfileFraction(1)
+		bb.log.Info(http.ListenAndServe("localhost:6969", nil))
+	}()
 
 	stopStats := make(chan struct{}, 1)
 	var statsWg sync.WaitGroup

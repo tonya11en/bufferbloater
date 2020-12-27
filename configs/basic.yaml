@@ -1,7 +1,25 @@
 client:
   - workload:
-      - rps: 50
-        duration: 10s
+      - rps: 60
+        duration: 2s
+      - rps: 70
+        duration: 2s
+      - rps: 80
+        duration: 2s
+      - rps: 90
+        duration: 2s
+      - rps: 100
+        duration: 2s
+      - rps: 110
+        duration: 2s
+      - rps: 120
+        duration: 2s
+      - rps: 130
+        duration: 2s
+      - rps: 140
+        duration: 2s
+      - rps: 150
+        duration: 2s
       - rps: 150
         duration: 10s
     rq_timeout: 2s
@@ -9,26 +27,27 @@ client:
       address: 0.0.0.0
       port: 9002
   - workload:
-      - rps: 50
-        duration: 20s
+      - rps: 60
+        duration: 30s
     rq_timeout: 2s
     target_server:
       address: 0.0.0.0
       port: 9002
 server:
   profile:
-    - duration: 20s
+    - duration: 30s
       latency_distribution:
       - weight: 90
         latency: 50ms
       - weight: 5
-        latency: 60ms
-      - weight: 4
         latency: 100ms
-      - weight: 1
+      - weight: 4
         latency: 150ms
+      - weight: 1
+        latency: 200ms
   listen_port: 9002
   threads: 8
-  max_queue_size: 1000
+  max_queue_size: 10000
   max_active_rq: 50
-  queue_timeout: 10ms # 0 means no timeout
+  queue_timeout: 0ms # 0 means no timeout
+  enable_isolation: false
