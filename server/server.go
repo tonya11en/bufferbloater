@@ -165,7 +165,7 @@ func (s *Server) requestHandler(w http.ResponseWriter, req *http.Request) {
 
 	// TODO: make this runtime configurable
 	if !s.config.EnableIsolation {
-		tenantId = ""
+		tenantId = "1"
 	}
 
 	successful, qsize := s.tq.Push(tenantId, rq)
@@ -175,7 +175,7 @@ func (s *Server) requestHandler(w http.ResponseWriter, req *http.Request) {
 
 	<-rq.done
 
-	s.statsMgr.Set("server.queued_rq", float64(qsize))
+	s.statsMgr.Set(fmt.Sprintf("server.%s.queued_rq", tenantId), float64(qsize))
 }
 
 func (s *Server) worker() {

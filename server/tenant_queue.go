@@ -46,7 +46,8 @@ func NewTenantQueue(maxQueueSize uint) *TenantQueue {
 		tenantQueueMap: make(map[string](*innerQueue)),
 		tenantIdx:      0,
 		maxQueueSize:   maxQueueSize,
-		mainQueue:      make(chan *rqMeta),
+
+		mainQueue: make(chan *rqMeta, 1024),
 	}
 }
 
@@ -61,12 +62,30 @@ func (t *TenantQueue) getInnerQueue(tenant string) *innerQueue {
 	return t.tenantQueueMap[tenant]
 }
 
+func (t *TenantQueue) loadMainQueue(iq *innerQueue, tenant string) {
+	// Loaded implies there's no active rq in the main queue.
+	t.mainQueue <- &rqMeta{
+		Rq:       <-iq.Fifo,
+		TenantId: tenant,
+	}
+	iq.Loaded = false
+}
+
 // This can return a bogus request value if the server is shutdown.. a bit ugly, but works for now.
 func (t *TenantQueue) Pop(ctx context.Context) *Rq {
 	for {
 		select {
 		case meta := <-t.mainQueue:
-			t.getInnerQueue(meta.TenantId).Loaded = true
+			iq := t.getInnerQueue(meta.TenantId)
+
+			t.mtx.Lock()
+			defer t.mtx.Unlock()
+
+			if len(iq.Fifo) == 0 {
+				iq.Loaded = true
+			} else {
+				t.loadMainQueue(iq, meta.TenantId)
+			}
 			return meta.Rq
 		case <-ctx.Done():
 			return nil
@@ -76,7 +95,7 @@ func (t *TenantQueue) Pop(ctx context.Context) *Rq {
 
 // Returns true if successful. If not successful, it implies the queue is full/overloaded.
 // and the size of the queue.
-func (t *TenantQueue) Push(tenant string, rq *Rq) (bool, uint) {
+func (t *TenantQueue) Push(tenant string, rq *Rq) (bool, int) {
 	iq := t.getInnerQueue(tenant)
 
 	t.mtx.Lock()
@@ -85,16 +104,11 @@ func (t *TenantQueue) Push(tenant string, rq *Rq) (bool, uint) {
 	select {
 	case iq.Fifo <- rq:
 		if iq.Loaded {
-			// Loaded implies there's no active rq in the main queue.
-			t.mainQueue <- &rqMeta{
-				Rq:       <-iq.Fifo,
-				TenantId: tenant,
-			}
-			iq.Loaded = false
+			t.loadMainQueue(iq, tenant)
 		}
-		return true, uint(len(iq.Fifo))
+		return true, int(len(iq.Fifo))
 
 	default:
-		return false, uint(len(iq.Fifo))
+		return false, int(len(iq.Fifo))
 	}
 }

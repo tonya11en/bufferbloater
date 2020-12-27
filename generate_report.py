@@ -47,9 +47,10 @@ print (rq_sr_y2)
 
 active_rq_x, active_rq_y = xy_from_csv("server.active_rq.csv")
 
-qsize_x, qsize_y = xy_from_csv("server.queued_rq.csv")
+qsize_x1, qsize_y1 = xy_from_csv("server.1.queued_rq.csv")
+qsize_x2, qsize_y2 = xy_from_csv("server.2.queued_rq.csv")
 
-qtimeout_x, qtimeout_y = xy_from_csv("server.queued_rq.csv")
+qtimeout_x, qtimeout_y = xy_from_csv("server.queue_timeout.csv")
 
 timeout_stamps1, _ = xy_from_csv("client1.rq.timeout.csv")
 timeout_stamps2, _ = xy_from_csv("client2.rq.timeout.csv")
@@ -75,13 +76,14 @@ service_unavail_stamps2 = adjust_x_val_starts(service_unavail_stamps2)
 rq_sr_x1 = adjust_x_val_starts(rq_sr_x1)
 rq_sr_x2 = adjust_x_val_starts(rq_sr_x2)
 active_rq_x = adjust_x_val_starts(active_rq_x)
-qsize_x = adjust_x_val_starts(qsize_x)
+qsize_x1 = adjust_x_val_starts(qsize_x1)
+qsize_x2 = adjust_x_val_starts(qsize_x2)
 
 relative_sim_end = max(rq_rate_x1 + rq_rate_x2 +
                        rq_latency_x1 + rq_latency_x2 +
                        qtimeout_x + timeout_stamps1 + timeout_stamps2 +
                        service_unavail_stamps1 + service_unavail_stamps2 + 
-                       rq_sr_x1 + rq_sr_x2 + active_rq_x + qsize_x)
+                       rq_sr_x1 + rq_sr_x2 + active_rq_x + qsize_x1 + qsize_x2)
 relative_sim_end = min(relative_sim_end, SIMULATION_LENGTH_SECS)
 
 def adjust_x_val_ends(vals):
@@ -90,7 +92,8 @@ def adjust_x_val_ends(vals):
 rq_sr_x1 = adjust_x_val_ends(rq_sr_x1)
 rq_sr_x2 = adjust_x_val_ends(rq_sr_x2)
 active_rq_x = adjust_x_val_ends(active_rq_x)
-qsize_x = adjust_x_val_ends(qsize_x)
+qsize_x1 = adjust_x_val_ends(qsize_x1)
+qsize_x2 = adjust_x_val_ends(qsize_x2)
 
 fig, (ax1, ax2, ax3, ax4, ax5, ax6) = plt.subplots(6)
 
@@ -100,8 +103,8 @@ c2color = "blue"
 ax1.set_xlabel('Time (s)')
 ax1.set_xlim([0,relative_sim_end])
 ax1.set_ylabel('Request Latency')
-ax1.scatter(rq_latency_x1,rq_latency_y1)
-ax1.scatter(rq_latency_x2,rq_latency_y2)
+ax1.scatter(rq_latency_x1,rq_latency_y1, color=c1color)
+ax1.scatter(rq_latency_x2,rq_latency_y2, color=c2color)
 ax1.tick_params(axis='y', labelcolor="black")
 
 ax2.set_xlabel('Time (s)')
@@ -131,7 +134,8 @@ if len(service_unavail_stamps1 + service_unavail_stamps2) > 0:
 ax5.set_xlabel('Time (s)')
 ax5.set_xlim([0,relative_sim_end])
 ax5.set_ylabel('Queue Length')
-ax5.plot(qsize_x, qsize_y, '-')
+ax5.plot(qsize_x1, qsize_y1, '-', color=c1color)
+ax5.plot(qsize_x2, qsize_y2, '-', color=c2color)
 ax5.tick_params(axis='y', labelcolor="black")
 
 ax6.set_xlabel('Time (s)')

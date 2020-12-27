@@ -86,7 +86,7 @@ func TestClientParsing(t *testing.T) {
 	err := yaml.UnmarshalStrict([]byte(validYamlString), &parsedConfig)
 	assert.Equal(t, err, nil)
 
-	cc, err := clientConfigParse(parsedConfig)
+	cc, err := clientConfigParse(parsedConfig, 0)
 	assert.Equal(t, err, nil)
 	assert.Equal(t, cc.TargetServer.Address, "0.0.0.0")
 	assert.Equal(t, cc.TargetServer.Port, uint(9001))
