@@ -102,61 +102,82 @@ active_rq_x = adjust_x_val_ends(active_rq_x)
 qsize_x1 = adjust_x_val_ends(qsize_x1)
 qsize_x2 = adjust_x_val_ends(qsize_x2)
 
-fig, (ax1, ax2, ax3, ax4, ax5, ax6, ax7) = plt.subplots(7)
-
 c1color = "orange"
 c2color = "blue"
 
-ax1.set_xlabel('Time (s)')
-ax1.set_xlim([0,relative_sim_end])
-ax1.set_ylabel('Request Latency')
-ax1.scatter(rq_latency_x1,rq_latency_y1, color=c1color)
-ax1.scatter(rq_latency_x2,rq_latency_y2, color=c2color)
-ax1.tick_params(axis='y', labelcolor="black")
+def show_latency(ax):
+    ax.set_xlabel('Time (s)')
+    ax.set_xlim([0,relative_sim_end])
+    ax.set_ylabel('Request Latency')
+    ax.scatter(rq_latency_x1,rq_latency_y1, color=c1color)
+    ax.scatter(rq_latency_x2,rq_latency_y2, color=c2color)
+    ax.tick_params(axis='y', labelcolor="black")
 
-ax2.set_xlabel('Time (s)')
-ax2.set_xlim([0,relative_sim_end])
-ax2.set_ylabel('RPS')
-ax2.plot(rq_rate_x1,rq_rate_y1, '--', color=c1color)
-ax2.plot(rq_rate_x2,rq_rate_y2, '--', color=c2color)
-ax2.tick_params(axis='y', labelcolor="black")
+def show_rps(ax):
+    ax.set_xlabel('Time (s)')
+    ax.set_xlim([0,relative_sim_end])
+    ax.set_ylabel('RPS')
+    ax.plot(rq_rate_x1,rq_rate_y1, '--', color=c1color)
+    ax.plot(rq_rate_x2,rq_rate_y2, '--', color=c2color)
+    ax.tick_params(axis='y', labelcolor="black")
 
-# Get timeout vertical lines.
-ax3.set_ylabel("Rq Timeouts")
-ax3.set_xlabel('Time (s)')
-ax3.set_xlim([0,relative_sim_end])
-if len(timeout_stamps1 + timeout_stamps2) > 0:
-    ax3.hist([timeout_stamps1, timeout_stamps2], bins=1000, density=True, histtype='bar',
-            stacked=True, range=(0,relative_sim_end), color=[c1color, c2color])
+def show_timeouts(ax):
+    # Get timeout vertical lines.
+    ax.set_ylabel("Rq Timeouts")
+    ax.set_xlabel('Time (s)')
+    ax.set_xlim([0,relative_sim_end])
+    if len(timeout_stamps1 + timeout_stamps2) > 0:
+        ax.hist([timeout_stamps1, timeout_stamps2], bins=1000, density=True, histtype='bar',
+                stacked=True, range=(0,relative_sim_end), color=[c1color, c2color])
 
-ax4.set_ylabel("Goodput")
-ax4.set_xlabel('Time (s)')
-ax4.set_xlim([0,relative_sim_end])
-ax4.plot(rq_goodput_x1, rq_goodput_y1, color=c1color)
-ax4.plot(rq_goodput_x2, rq_goodput_y2, color=c2color)
+def show_goodput(ax):
+    ax.set_ylabel("Goodput")
+    ax.set_xlabel('Time (s)')
+    ax.set_xlim([0,relative_sim_end])
+    ax.plot(rq_goodput_x1, rq_goodput_y1, color=c1color)
+    ax.plot(rq_goodput_x2, rq_goodput_y2, color=c2color)
 
-# Get 503 vertical lines.
-ax5.set_ylabel("Rq Throttled (503)")
-ax5.set_xlabel('Time (s)')
-ax5.set_xlim([0,relative_sim_end])
-if len(service_unavail_stamps1 + service_unavail_stamps2) > 0:
-    ax5.hist([service_unavail_stamps1,service_unavail_stamps2], bins=1000, density=True, histtype='bar',
-            stacked=True, range=(0,relative_sim_end), color=[c1color, c2color])
+def show_throttling(ax):
+    # Get 503 vertical lines.
+    ax.set_ylabel("Rq Throttled (503)")
+    ax.set_xlabel('Time (s)')
+    ax.set_xlim([0,relative_sim_end])
+    if len(service_unavail_stamps1 + service_unavail_stamps2) > 0:
+        ax.hist([service_unavail_stamps1,service_unavail_stamps2], bins=1000, density=True, histtype='bar',
+                stacked=True, range=(0,relative_sim_end), color=[c1color, c2color])
 
-# TODO: stacked graph
-ax6.set_xlabel('Time (s)')
-ax6.set_xlim([0,relative_sim_end])
-ax6.set_ylabel('Queue Length')
-ax6.plot(qsize_x1, qsize_y1, '-', color=c1color)
-ax6.plot(qsize_x2, qsize_y2, '-', color=c2color)
-ax6.tick_params(axis='y', labelcolor="black")
+def show_qlen(ax):
+    # TODO: stacked graph
+    ax.set_xlabel('Time (s)')
+    ax.set_xlim([0,relative_sim_end])
+    ax.set_ylabel('Queue Length')
+    ax.plot(qsize_x1, qsize_y1, '-', color=c1color)
+    ax.plot(qsize_x2, qsize_y2, '-', color=c2color)
+    ax.tick_params(axis='y', labelcolor="black")
 
-ax7.set_xlabel('Time (s)')
-ax7.set_xlim([0,relative_sim_end])
-ax7.set_ylabel('Rq Success %')
-ax7.plot(rq_sr_x1, rq_sr_y1, '-', color=c1color)
-ax7.plot(rq_sr_x2, rq_sr_y2, '-', color=c2color)
-ax7.tick_params(axis='y', labelcolor="black")
+def show_sr(ax):
+    ax.set_xlabel('Time (s)')
+    ax.set_xlim([0,relative_sim_end])
+    ax.set_ylabel('Rq Success %')
+    ax.plot(rq_sr_x1, rq_sr_y1, '-', color=c1color)
+    ax.plot(rq_sr_x2, rq_sr_y2, '-', color=c2color)
+    ax.tick_params(axis='y', labelcolor="black")
+
+show = [
+        show_latency,
+        show_rps,
+        show_timeouts,
+        show_goodput,
+        show_throttling,
+        show_qlen,
+        show_sr,
+]
+
+fig, axs = plt.subplots(len(show))
+for idx in range(len(axs)):
+    ax = axs[idx]
+    fn = show[idx]
+    fn(ax)
 
 plt.legend()
 plt.show()
