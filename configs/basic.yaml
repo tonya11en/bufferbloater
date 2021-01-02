@@ -49,5 +49,5 @@ server:
   threads: 8
   max_queue_size: 10000
   max_active_rq: 50
-  queue_timeout: 500ms # 0 means no timeout
+  queue_timeout: 0ms # 0 means no timeout
   enable_isolation: false

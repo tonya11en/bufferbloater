@@ -3,6 +3,7 @@
 import matplotlib.pyplot as plt
 import csv, sys, os
 import numpy as np
+from operator import add
 
 SIMULATION_LENGTH_SECS = 30
 
@@ -43,7 +44,9 @@ rq_latency_x2, rq_latency_y2 = xy_from_csv("client2.rq.latency.csv")
 
 rq_sr_x1, rq_sr_y1 = xy_from_csv("client1.rq.success_rate.csv")
 rq_sr_x2, rq_sr_y2 = xy_from_csv("client2.rq.success_rate.csv")
-print (rq_sr_y2)
+
+rq_goodput_x1, rq_goodput_y1 = xy_from_csv("client1.rq.success.count.csv")
+rq_goodput_x2, rq_goodput_y2 = xy_from_csv("client2.rq.success.count.csv")
 
 active_rq_x, active_rq_y = xy_from_csv("server.active_rq.csv")
 
@@ -78,6 +81,8 @@ rq_sr_x2 = adjust_x_val_starts(rq_sr_x2)
 active_rq_x = adjust_x_val_starts(active_rq_x)
 qsize_x1 = adjust_x_val_starts(qsize_x1)
 qsize_x2 = adjust_x_val_starts(qsize_x2)
+rq_goodput_x1 = adjust_x_val_starts(rq_goodput_x1)
+rq_goodput_x2 = adjust_x_val_starts(rq_goodput_x2)
 
 relative_sim_end = max(rq_rate_x1 + rq_rate_x2 +
                        rq_latency_x1 + rq_latency_x2 +
@@ -91,11 +96,13 @@ def adjust_x_val_ends(vals):
 
 rq_sr_x1 = adjust_x_val_ends(rq_sr_x1)
 rq_sr_x2 = adjust_x_val_ends(rq_sr_x2)
+rq_goodput_x1 = adjust_x_val_ends(rq_goodput_x1)
+rq_goodput_x2 = adjust_x_val_ends(rq_goodput_x2)
 active_rq_x = adjust_x_val_ends(active_rq_x)
 qsize_x1 = adjust_x_val_ends(qsize_x1)
 qsize_x2 = adjust_x_val_ends(qsize_x2)
 
-fig, (ax1, ax2, ax3, ax4, ax5, ax6) = plt.subplots(6)
+fig, (ax1, ax2, ax3, ax4, ax5, ax6, ax7) = plt.subplots(7)
 
 c1color = "orange"
 c2color = "blue"
@@ -122,28 +129,34 @@ if len(timeout_stamps1 + timeout_stamps2) > 0:
     ax3.hist([timeout_stamps1, timeout_stamps2], bins=1000, density=True, histtype='bar',
             stacked=True, range=(0,relative_sim_end), color=[c1color, c2color])
 
-# Get 503 vertical lines.
-ax4.set_ylabel("Rq Throttled (503)")
+ax4.set_ylabel("Goodput")
 ax4.set_xlabel('Time (s)')
 ax4.set_xlim([0,relative_sim_end])
+ax4.plot(rq_goodput_x1, rq_goodput_y1, color=c1color)
+ax4.plot(rq_goodput_x2, rq_goodput_y2, color=c2color)
+
+# Get 503 vertical lines.
+ax5.set_ylabel("Rq Throttled (503)")
+ax5.set_xlabel('Time (s)')
+ax5.set_xlim([0,relative_sim_end])
 if len(service_unavail_stamps1 + service_unavail_stamps2) > 0:
-    ax4.hist([service_unavail_stamps1,service_unavail_stamps2], bins=1000, density=True, histtype='bar',
+    ax5.hist([service_unavail_stamps1,service_unavail_stamps2], bins=1000, density=True, histtype='bar',
             stacked=True, range=(0,relative_sim_end), color=[c1color, c2color])
 
 # TODO: stacked graph
-ax5.set_xlabel('Time (s)')
-ax5.set_xlim([0,relative_sim_end])
-ax5.set_ylabel('Queue Length')
-ax5.plot(qsize_x1, qsize_y1, '-', color=c1color)
-ax5.plot(qsize_x2, qsize_y2, '-', color=c2color)
-ax5.tick_params(axis='y', labelcolor="black")
-
 ax6.set_xlabel('Time (s)')
 ax6.set_xlim([0,relative_sim_end])
-ax6.set_ylabel('Rq Success %')
-ax6.plot(rq_sr_x1, rq_sr_y1, '-', color=c1color)
-ax6.plot(rq_sr_x2, rq_sr_y2, '-', color=c2color)
+ax6.set_ylabel('Queue Length')
+ax6.plot(qsize_x1, qsize_y1, '-', color=c1color)
+ax6.plot(qsize_x2, qsize_y2, '-', color=c2color)
 ax6.tick_params(axis='y', labelcolor="black")
+
+ax7.set_xlabel('Time (s)')
+ax7.set_xlim([0,relative_sim_end])
+ax7.set_ylabel('Rq Success %')
+ax7.plot(rq_sr_x1, rq_sr_y1, '-', color=c1color)
+ax7.plot(rq_sr_x2, rq_sr_y2, '-', color=c2color)
+ax7.tick_params(axis='y', labelcolor="black")
 
 plt.legend()
 plt.show()
