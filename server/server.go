@@ -30,7 +30,6 @@ type Config struct {
 	Profile         []LatencySegment
 	ListenPort      uint
 	Threads         uint
-	MaxActiveRq     uint
 	MaxQueueSize    uint
 	QueueTimeout    time.Duration
 	EnableIsolation bool
@@ -161,7 +160,6 @@ func (s *Server) requestHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	tenantId := req.Header.Get("tenant-id")
-	s.log.Infof("handling request", "tenant-id", tenantId, "isolation", s.config.EnableIsolation)
 
 	// TODO: make this runtime configurable
 	if !s.config.EnableIsolation {

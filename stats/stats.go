@@ -77,10 +77,9 @@ func (s *StatsMgr) sample() {
 			append(s.sampleCollection[statName],
 				Sample{timestamp: now, val: val})
 	}
-	s.statsVals["client1.rq.success.count"] = 0.0
-	s.statsVals["client1.rq.total.count"] = 0.0
-	s.statsVals["client2.rq.success.count"] = 0.0
-	s.statsVals["client2.rq.total.count"] = 0.0
+
+	s.statsVals = make(map[string]float64)
+
 	s.mtx.Unlock()
 }
 

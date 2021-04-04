@@ -90,14 +90,12 @@ func (c *Client) sendWorkloadRequest() {
 		c.statsMgr.DirectMeasurement(fmt.Sprintf("client%s.rq.latency", c.idx), rqStart, float64(latency.Seconds()))
 		c.statsMgr.Incr(fmt.Sprintf("client%s.rq.success.count", c.idx))
 	} else if resp.StatusCode == http.StatusServiceUnavailable {
-		c.statsMgr.DirectMeasurement(fmt.Sprintf("client%s.rq.503", c.idx), rqStart, 1.0)
+		c.statsMgr.Incr(fmt.Sprintf("client%s.rq.503", c.idx))
 		c.statsMgr.Incr(fmt.Sprintf("client%s.rq.failure.count", c.idx))
 	}
 }
 
 func (c *Client) processWorkloadStage(ws WorkloadStage) {
-	c.statsMgr.Set(fmt.Sprintf("client%s.rps", c.idx), float64(ws.RPS))
-
 	// Divide the requests/sec evenly into the duration of this stage. We can cast
 	// an integral type to a time.Duration since time.Duration is an int64 behind
 	// the scenes.
@@ -114,6 +112,7 @@ func (c *Client) processWorkloadStage(ws WorkloadStage) {
 			case <-done:
 				return
 			case <-ticker.C:
+				c.statsMgr.Set(fmt.Sprintf("client%s.rps", c.idx), float64(ws.RPS))
 				go c.sendWorkloadRequest()
 			}
 		}

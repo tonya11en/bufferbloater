@@ -5,6 +5,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"runtime"
+	"strconv"
 	"sync"
 	"time"
 
@@ -18,8 +19,7 @@ import (
 
 type Bufferbloater struct {
 	log      *zap.SugaredLogger
-	c1       *client.Client
-	c2       *client.Client
+	c        []*client.Client
 	s        *server.Server
 	statsMgr *stats.StatsMgr
 }
@@ -49,7 +49,6 @@ type parsedYamlConfig struct {
 		ListenPort      uint   `yaml:"listen_port"`
 		Threads         uint   `yaml:"threads"`
 		MaxQueueSize    uint   `yaml:"max_queue_size"`
-		MaxActiveRq     uint   `yaml:"max_active_rq"`
 		QueueTimeout    string `yaml:"queue_timeout"`
 		EnableIsolation bool   `yaml:"enable_isolation"`
 	}
@@ -94,7 +93,6 @@ func serverConfigParse(parsedConfig parsedYamlConfig) (server.Config, error) {
 	serverConfig := server.Config{
 		ListenPort:      parsedConfig.Server.ListenPort,
 		Threads:         parsedConfig.Server.Threads,
-		MaxActiveRq:     parsedConfig.Server.MaxActiveRq,
 		MaxQueueSize:    parsedConfig.Server.MaxQueueSize,
 		EnableIsolation: parsedConfig.Server.EnableIsolation,
 	}
@@ -166,18 +164,16 @@ func NewBufferbloater(configFilename string, logger *zap.SugaredLogger) (*Buffer
 			"error", err)
 	}
 
-	clientConfig1, err := clientConfigParse(parsedConfig, 0)
-	if err != nil {
-		bb.log.Fatalw("failed to create client config",
-			"error", err)
+	numClients := len(parsedConfig.Client)
+	bb.c = make([]*client.Client, numClients)
+
+	for i := 0; i < numClients; i++ {
+		clientConfig, err := clientConfigParse(parsedConfig, uint(i))
+		if err != nil {
+			bb.log.Fatalw("failed to create client config", "error", err)
+		}
+		bb.c[i] = client.NewClient(clientConfig, logger, bb.statsMgr, strconv.Itoa(i))
 	}
-	clientConfig2, err := clientConfigParse(parsedConfig, 1)
-	if err != nil {
-		bb.log.Fatalw("failed to create client config",
-			"error", err)
-	}
-	bb.c1 = client.NewClient(clientConfig1, logger, bb.statsMgr, "1")
-	bb.c2 = client.NewClient(clientConfig2, logger, bb.statsMgr, "2")
 
 	serverConfig, err := serverConfigParse(parsedConfig)
 	if err != nil {
@@ -205,10 +201,12 @@ func (bb *Bufferbloater) Run() {
 	go bb.statsMgr.PeriodicStatsCollection(100*time.Millisecond, stopStats, &statsWg)
 
 	var wg sync.WaitGroup
-	wg.Add(3)
+	wg.Add(1)
 	go bb.s.Start(&wg)
-	go bb.c1.Start(&wg)
-	go bb.c2.Start(&wg)
+	for _, c := range bb.c {
+		wg.Add(1)
+		go c.Start(&wg)
+	}
 	wg.Wait()
 
 	stopStats <- struct{}{}

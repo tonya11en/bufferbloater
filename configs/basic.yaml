@@ -1,38 +1,59 @@
 client:
   - workload:
+      - rps: 20
+        duration: 2s
+      - rps: 25
+        duration: 2s
+      - rps: 30
+        duration: 2s
+      - rps: 35
+        duration: 2s
+      - rps: 40
+        duration: 2s
+      - rps: 45
+        duration: 2s
+      - rps: 50
+        duration: 2s
+      - rps: 55
+        duration: 2s
       - rps: 60
         duration: 2s
+      - rps: 65
+        duration: 2s
       - rps: 70
-        duration: 2s
-      - rps: 80
-        duration: 2s
-      - rps: 90
-        duration: 2s
-      - rps: 100
-        duration: 2s
-      - rps: 110
-        duration: 2s
-      - rps: 120
-        duration: 2s
-      - rps: 130
-        duration: 2s
-      - rps: 140
-        duration: 2s
-      - rps: 150
-        duration: 2s
-      - rps: 150
         duration: 10s
     rq_timeout: 2s
     target_server:
       address: 0.0.0.0
       port: 9002
   - workload:
-      - rps: 60
+      - rps: 20
         duration: 30s
     rq_timeout: 2s
     target_server:
       address: 0.0.0.0
       port: 9002
+  - workload:
+      - rps: 20
+        duration: 30s
+    rq_timeout: 2s
+    target_server:
+      address: 0.0.0.0
+      port: 9002
+        # - workload:
+        #     - rps: 20
+        #       duration: 30s
+        #   rq_timeout: 2s
+        #   target_server:
+        #     address: 0.0.0.0
+        #     port: 9002
+        # - workload:
+        #     - rps: 20
+        #       duration: 30s
+        #   rq_timeout: 2s
+        #   target_server:
+        #     address: 0.0.0.0
+        #     port: 9002
 server:
   profile:
     - duration: 30s
@@ -46,8 +67,7 @@ server:
       - weight: 1
         latency: 200ms
   listen_port: 9002
-  threads: 8
-  max_queue_size: 10000
-  max_active_rq: 50
-  queue_timeout: 0ms # 0 means no timeout
+  threads: 4
+  max_queue_size: 100
+  queue_timeout: 200ms # 0 means no timeout
   enable_isolation: false
