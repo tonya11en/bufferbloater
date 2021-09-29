@@ -1,3 +1,0 @@
-package: github.com/tonya11en/bufferbloater
-import:
-- package: gopkg.in/yaml.v2
