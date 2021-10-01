@@ -28,9 +28,10 @@ type Config struct {
 }
 
 type Client struct {
-	config   Config
-	log      *zap.SugaredLogger
-	statsMgr *stats.StatsMgr
+	config     Config
+	log        *zap.SugaredLogger
+	statsMgr   *stats.StatsMgr
+	httpClient *http.Client
 }
 
 func NewClient(config Config, logger *zap.SugaredLogger, sm *stats.StatsMgr) *Client {
@@ -38,6 +39,13 @@ func NewClient(config Config, logger *zap.SugaredLogger, sm *stats.StatsMgr) *Cl
 		config:   config,
 		log:      logger,
 		statsMgr: sm,
+		httpClient: &http.Client{
+			Timeout: c.config.RequestTimeout,
+			Transport: &http.Transport{
+				MaxIdleConns:    1000,
+				IdleConnTimeout: 90 * time.Second,
+			},
+		},
 	}
 
 	logger.Infow("done creating client",
@@ -51,10 +59,6 @@ func (c *Client) sendWorkloadRequest() {
 	targetString := fmt.Sprintf("http://%s:%d", c.config.TargetServer.Address, c.config.TargetServer.Port)
 
 	rqStart := time.Now()
-	httpClient := &http.Client{
-		Timeout: c.config.RequestTimeout,
-	}
-
 	req, err := http.NewRequest("GET", targetString, nil)
 	if err != nil {
 		c.log.Errorw("error creating request", "error", err)
@@ -64,7 +68,7 @@ func (c *Client) sendWorkloadRequest() {
 	// Tells the server to close the connection when done.
 	req.Close = true
 
-	resp, err := httpClient.Do(req)
+	resp, err := c.httpClient.Do(req)
 	latency := time.Since(rqStart)
 
 	// Handle timeouts and report error otherwise.
