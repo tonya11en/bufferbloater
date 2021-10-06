@@ -1,4 +1,4 @@
-module allen.gg/m
+module allen.gg/bufferbloater
 
 go 1.16
 

@@ -2,7 +2,6 @@ package stats
 
 import (
 	"fmt"
-	"math"
 	"os"
 	"sync"
 	"time"
@@ -34,28 +33,27 @@ func NewStatsMgrImpl(logger *zap.SugaredLogger) *StatsMgr {
 		sampleCollection: make(map[string][]Sample),
 		log:              logger,
 	}
-	ret.sampleCollection["client.rq.success_rate"] = []Sample{}
 	return ret
 }
 
-func (s *StatsMgr) Set(k string, val float64) {
+func (s *StatsMgr) Set(k string, val float64, tid uint) {
 	s.mtx.Lock()
-	s.statsVals[k] = val
+	s.statsVals[keyWithTid(k, tid)] = val
 	s.mtx.Unlock()
 }
 
-func (s *StatsMgr) Incr(k string) {
+func (s *StatsMgr) Incr(k string, tid uint) {
 	s.mtx.Lock()
-	s.statsVals[k] += 1.0
+	s.statsVals[keyWithTid(k, tid)] += 1.0
 	s.mtx.Unlock()
 }
 
 // Direct measurements don't need to be sampled. They just go straight to the
 // sample collection.
-func (s *StatsMgr) DirectMeasurement(k string, t time.Time, val float64) {
+func (s *StatsMgr) DirectMeasurement(k string, t time.Time, val float64, tid uint) {
 	s.mtx.Lock()
-	s.sampleCollection[k] =
-		append(s.sampleCollection[k], Sample{timestamp: t, val: val})
+	s.sampleCollection[keyWithTid(k, tid)] =
+		append(s.sampleCollection[keyWithTid(k, tid)], Sample{timestamp: t, val: val})
 	s.mtx.Unlock()
 }
 
@@ -63,18 +61,13 @@ func (s *StatsMgr) sample() {
 	s.mtx.Lock()
 	now := time.Now()
 
-	// Derive success rate.
-	// TODO: the stats need to be less hacky. rethink all of this.
-	sr := s.statsVals["client.rq.success.count"] / math.Max(s.statsVals["client.rq.total.count"], 1.0)
-	s.statsVals["client.rq.success_rate"] = sr
-
 	for statName, val := range s.statsVals {
 		s.sampleCollection[statName] =
 			append(s.sampleCollection[statName],
 				Sample{timestamp: now, val: val})
 	}
-	s.statsVals["client.rq.success.count"] = 0.0
-	s.statsVals["client.rq.total.count"] = 0.0
+
+	s.statsVals = make(map[string]float64)
 	s.mtx.Unlock()
 }
 
@@ -89,8 +82,7 @@ func (s *StatsMgr) DumpStatsToFolder(folderName string) error {
 		s.log.Infow("creating stats file", "filename", filename)
 		file, err := os.Create(filename)
 		if err != nil {
-			fmt.Errorf("unable to create file %s", statName)
-			return err
+			return fmt.Errorf("unable to create file %s: %s", statName, err.Error())
 		}
 
 		defer file.Close()
@@ -98,8 +90,7 @@ func (s *StatsMgr) DumpStatsToFolder(folderName string) error {
 		for _, sample := range sampleSlice {
 			_, err := file.Write([]byte(fmt.Sprintf("%d,%f\n", sample.timestamp.UnixNano(), sample.val)))
 			if err != nil {
-				fmt.Errorf("unable to write to file %+v", file)
-				return err
+				return fmt.Errorf("unable to write to file %+v: %s", file, err.Error())
 			}
 		}
 		s.log.Infow("finished writing to stats file", "filename", filename)
@@ -122,4 +113,8 @@ func (s *StatsMgr) PeriodicStatsCollection(period time.Duration, done chan struc
 			s.sample()
 		}
 	}
+}
+
+func keyWithTid(k string, tid uint) string {
+	return fmt.Sprintf(k+".%d", tid)
 }

@@ -3,6 +3,10 @@
 import matplotlib.pyplot as plt
 import csv, sys, os
 import numpy as np
+import pandas as pd
+
+# Stats dump interval so we can calculate rates.
+dt = 0.25
 
 if len(sys.argv) == 2:
     data_dir = sys.argv[1]
@@ -30,67 +34,40 @@ def xy_from_csv(filename):
                 y.append(float(row[1]))
     return x, y
 
-# We want to plot the request are, latency, and the moment timeouts happen.
-# While we're at it, let's just adjust the timestamp to be relative to the
-# simulation start.
-rq_rate_x, rq_rate_y = xy_from_csv("client.rps.csv")
-rq_latency_x, rq_latency_y = xy_from_csv("client.rq.latency.csv")
-rq_sr_x, rq_sr_y = xy_from_csv("client.rq.success_rate.csv")
-qsize_x, qsize_y = xy_from_csv("server.queue.size.csv")
-timeout_stamps, _ = xy_from_csv("client.rq.timeout.csv")
-service_unavail_stamps, _ = xy_from_csv("client.rq.503.csv")
+colors = ["blue", "green", "red"]
+fig, (ax1, ax2, ax3) = plt.subplots(3)
+for i in range(3):
+    # We want to plot the request are, latency, and the moment timeouts happen.
+    # While we're at it, let's just adjust the timestamp to be relative to the
+    # simulation start.
+    rq_rate_x, rq_rate_y = xy_from_csv("client.rps.{}.csv".format(i))
+    rq_latency_x, rq_latency_y = xy_from_csv("client.rq.latency.{}.csv".format(i))
+    success_stamps, _ = xy_from_csv("client.rq.success_hist.{}.csv".format(i))
+    goodput_x, goodput_y = xy_from_csv("client.rq.success.count.{}.csv".format(i))
 
-sim_start = min(rq_rate_x + rq_latency_x + timeout_stamps)
-rq_rate_x = list(map(lambda x: (x - sim_start) / 1e9, rq_rate_x))
-rq_latency_x = list(map(lambda x: (x - sim_start) / 1e9, rq_latency_x))
-rq_sr_x = list(map(lambda x: (x - sim_start) / 1e9, rq_sr_x))
-qsize_x = list(map(lambda x: (x - sim_start) / 1e9, qsize_x))
-timeout_stamps = list(map(lambda x: (x - sim_start) / 1e9, timeout_stamps))
-service_unavail_stamps = list(map(lambda x: (x - sim_start) / 1e9, service_unavail_stamps))
+    # Adjust for dt.
+    goodput_y = list(map(lambda x: x / dt, goodput_y))
 
-relative_sim_end = max(rq_latency_x + timeout_stamps + service_unavail_stamps)
-rq_sr_x = list(map(lambda x: x * (1.0 * relative_sim_end / rq_sr_x[-1]), rq_sr_x))
-qsize_x = list(map(lambda x: x * (1.0 * relative_sim_end / qsize_x[-1]), qsize_x))
+    xstart = min(rq_rate_x + rq_latency_x + goodput_x)
+    xend = max(rq_rate_x + rq_latency_x + goodput_x)
 
-fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(5)
+    ax1.set_xlabel('Time (s)')
+    ax1.set_ylabel('Request Latency')
+    #ax1.set_yscale('log') # log scale
+    ax1.plot(rq_latency_x,rq_latency_y, color=colors[i])
+    ax1.tick_params(axis='y', labelcolor="black")
+    ax1.set_xlim([xstart,xend])
 
-ax1.set_xlabel('Time (s)')
-ax1.set_xlim([0,relative_sim_end])
-ax1.set_ylabel('Request Latency')
-#ax1.set_yscale('log') # log scale
-ax1.scatter(rq_latency_x,rq_latency_y)
-ax1.tick_params(axis='y', labelcolor="black")
+    ax2.set_xlabel('Time (s)')
+    ax2.set_ylabel('RPS')
+    ax2.plot(rq_rate_x,rq_rate_y, '--')
+    ax2.tick_params(axis='y', labelcolor="blue")
+    ax2.set_xlim([xstart,xend])
 
-ax2.set_xlabel('Time (s)')
-ax2.set_xlim([0,relative_sim_end])
-ax2.set_ylabel('RPS')
-ax2.plot(rq_rate_x,rq_rate_y, '--')
-ax2.tick_params(axis='y', labelcolor="blue")
-
-# Get timeout vertical lines.
-ax3.set_ylabel("Failed Requests")
-ax3.set_xlabel('Time (s)')
-ax3.set_xlim([0,relative_sim_end])
-if len(timeout_stamps) > 0:
-    bins = np.arange(0, relative_sim_end, 0.01)
-    hist, _ = np.histogram(timeout_stamps, bins)
-    extent = [bins.min(), bins.max(), 0, 1]
-    ax3.hist([timeout_stamps, service_unavail_stamps], histtype='step', bins=1000,
-            range=(0,relative_sim_end), color=["red", "green"], stacked=False, fill=False,
-            label=["timeout", "503s"])
-ax3.legend(loc="upper left")
-
-ax4.set_xlabel('Time (s)')
-ax4.set_xlim([0,relative_sim_end])
-ax4.set_ylabel('Service Queue Size')
-ax4.plot(qsize_x,qsize_y, '-')
-ax4.tick_params(axis='y', labelcolor="blue")
-
-ax5.set_xlabel('Time (s)')
-ax5.set_xlim([0,relative_sim_end])
-ax5.set_ylabel('Request Success Rate')
-ax5.plot(rq_sr_x, rq_sr_y, '-')
-ax5.tick_params(axis='y', labelcolor="blue")
+    ax3.set_ylabel("Goodput")
+    ax3.set_xlabel('Time (s)')
+    ax3.plot(goodput_x, goodput_y, color=colors[i])
+    ax3.set_xlim([xstart,xend])
 
 plt.legend()
 plt.show()

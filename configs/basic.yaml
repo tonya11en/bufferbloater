@@ -1,62 +1,830 @@
-client:
-  workload:
-    - rps: 5000
-      duration: 10s
-    # 10
-    - rps: 5000
-      duration: 1s
-    - rps: 5100
-      duration: 1s
-    - rps: 5200
-      duration: 1s
-    - rps: 5300
-      duration: 1s
-    - rps: 5400
-      duration: 1s
-    # 15
-    - rps: 5500
-      duration: 1s
-    - rps: 5600
-      duration: 1s
-    - rps: 5700
-      duration: 1s
-    - rps: 5800
-      duration: 1s
-    - rps: 5900
-      duration: 1s
-    # 20
-    - rps: 6000
-      duration: 1s
-    - rps: 6100
-      duration: 1s
-    - rps: 6200
-      duration: 1s
-    - rps: 6300
-      duration: 1s
-    - rps: 6400
-      duration: 1s
-    # 25
-    - rps: 6500
-      duration: 25s
-    # 30
-  rq_timeout: 1s
-  target_server:
-    address: 0.0.0.0
-    # port: 9002
-    port: 9001
-server:
-  profile:
-    - duration: 50s
+clients:
+  - workload:
+    - rps: 4000
+      duration: 100ms
+    - rps: 4001
+      duration: 100ms
+    - rps: 4002
+      duration: 100ms
+    - rps: 4003
+      duration: 100ms
+    - rps: 4004
+      duration: 100ms
+    - rps: 4005
+      duration: 100ms
+    - rps: 4006
+      duration: 100ms
+    - rps: 4007
+      duration: 100ms
+    - rps: 4008
+      duration: 100ms
+    - rps: 4009
+      duration: 100ms
+    - rps: 4010
+      duration: 100ms
+    - rps: 4011
+      duration: 100ms
+    - rps: 4012
+      duration: 100ms
+    - rps: 4013
+      duration: 100ms
+    - rps: 4014
+      duration: 100ms
+    - rps: 4015
+      duration: 100ms
+    - rps: 4016
+      duration: 100ms
+    - rps: 4017
+      duration: 100ms
+    - rps: 4018
+      duration: 100ms
+    - rps: 4019
+      duration: 100ms
+    - rps: 4020
+      duration: 100ms
+    - rps: 4021
+      duration: 100ms
+    - rps: 4022
+      duration: 100ms
+    - rps: 4023
+      duration: 100ms
+    - rps: 4024
+      duration: 100ms
+    - rps: 4025
+      duration: 100ms
+    - rps: 4026
+      duration: 100ms
+    - rps: 4027
+      duration: 100ms
+    - rps: 4028
+      duration: 100ms
+    - rps: 4029
+      duration: 100ms
+    - rps: 4030
+      duration: 100ms
+    - rps: 4031
+      duration: 100ms
+    - rps: 4032
+      duration: 100ms
+    - rps: 4033
+      duration: 100ms
+    - rps: 4034
+      duration: 100ms
+    - rps: 4035
+      duration: 100ms
+    - rps: 4036
+      duration: 100ms
+    - rps: 4037
+      duration: 100ms
+    - rps: 4038
+      duration: 100ms
+    - rps: 4039
+      duration: 100ms
+    - rps: 4040
+      duration: 100ms
+    - rps: 4041
+      duration: 100ms
+    - rps: 4042
+      duration: 100ms
+    - rps: 4043
+      duration: 100ms
+    - rps: 4044
+      duration: 100ms
+    - rps: 4045
+      duration: 100ms
+    - rps: 4046
+      duration: 100ms
+    - rps: 4047
+      duration: 100ms
+    - rps: 4048
+      duration: 100ms
+    - rps: 4049
+      duration: 100ms
+    - rps: 4050
+      duration: 100ms
+    - rps: 4051
+      duration: 100ms
+    - rps: 4052
+      duration: 100ms
+    - rps: 4053
+      duration: 100ms
+    - rps: 4054
+      duration: 100ms
+    - rps: 4055
+      duration: 100ms
+    - rps: 4056
+      duration: 100ms
+    - rps: 4057
+      duration: 100ms
+    - rps: 4058
+      duration: 100ms
+    - rps: 4059
+      duration: 100ms
+    - rps: 4060
+      duration: 100ms
+    - rps: 4061
+      duration: 100ms
+    - rps: 4062
+      duration: 100ms
+    - rps: 4063
+      duration: 100ms
+    - rps: 4064
+      duration: 100ms
+    - rps: 4065
+      duration: 100ms
+    - rps: 4066
+      duration: 100ms
+    - rps: 4067
+      duration: 100ms
+    - rps: 4068
+      duration: 100ms
+    - rps: 4069
+      duration: 100ms
+    - rps: 4070
+      duration: 100ms
+    - rps: 4071
+      duration: 100ms
+    - rps: 4072
+      duration: 100ms
+    - rps: 4073
+      duration: 100ms
+    - rps: 4074
+      duration: 100ms
+    - rps: 4075
+      duration: 100ms
+    - rps: 4076
+      duration: 100ms
+    - rps: 4077
+      duration: 100ms
+    - rps: 4078
+      duration: 100ms
+    - rps: 4079
+      duration: 100ms
+    - rps: 4080
+      duration: 100ms
+    - rps: 4081
+      duration: 100ms
+    - rps: 4082
+      duration: 100ms
+    - rps: 4083
+      duration: 100ms
+    - rps: 4084
+      duration: 100ms
+    - rps: 4085
+      duration: 100ms
+    - rps: 4086
+      duration: 100ms
+    - rps: 4087
+      duration: 100ms
+    - rps: 4088
+      duration: 100ms
+    - rps: 4089
+      duration: 100ms
+    - rps: 4090
+      duration: 100ms
+    - rps: 4091
+      duration: 100ms
+    - rps: 4092
+      duration: 100ms
+    - rps: 4093
+      duration: 100ms
+    - rps: 4094
+      duration: 100ms
+    - rps: 4095
+      duration: 100ms
+    - rps: 4096
+      duration: 100ms
+    - rps: 4097
+      duration: 100ms
+    - rps: 4098
+      duration: 100ms
+    - rps: 4099
+      duration: 100ms
+    - rps: 4100
+      duration: 100ms
+    - rps: 4101
+      duration: 100ms
+    - rps: 4102
+      duration: 100ms
+    - rps: 4103
+      duration: 100ms
+    - rps: 4104
+      duration: 100ms
+    - rps: 4105
+      duration: 100ms
+    - rps: 4106
+      duration: 100ms
+    - rps: 4107
+      duration: 100ms
+    - rps: 4108
+      duration: 100ms
+    - rps: 4109
+      duration: 100ms
+    - rps: 4110
+      duration: 100ms
+    - rps: 4111
+      duration: 100ms
+    - rps: 4112
+      duration: 100ms
+    - rps: 4113
+      duration: 100ms
+    - rps: 4114
+      duration: 100ms
+    - rps: 4115
+      duration: 100ms
+    - rps: 4116
+      duration: 100ms
+    - rps: 4117
+      duration: 100ms
+    - rps: 4118
+      duration: 100ms
+    - rps: 4119
+      duration: 100ms
+    - rps: 4120
+      duration: 100ms
+    - rps: 4121
+      duration: 100ms
+    - rps: 4122
+      duration: 100ms
+    - rps: 4123
+      duration: 100ms
+    - rps: 4124
+      duration: 100ms
+    - rps: 4125
+      duration: 100ms
+    - rps: 4126
+      duration: 100ms
+    - rps: 4127
+      duration: 100ms
+    - rps: 4128
+      duration: 100ms
+    - rps: 4129
+      duration: 100ms
+    - rps: 4130
+      duration: 100ms
+    - rps: 4131
+      duration: 100ms
+    - rps: 4132
+      duration: 100ms
+    - rps: 4133
+      duration: 100ms
+    - rps: 4134
+      duration: 100ms
+    - rps: 4135
+      duration: 100ms
+    - rps: 4136
+      duration: 100ms
+    - rps: 4137
+      duration: 100ms
+    - rps: 4138
+      duration: 100ms
+    - rps: 4139
+      duration: 100ms
+    - rps: 4140
+      duration: 100ms
+    - rps: 4141
+      duration: 100ms
+    - rps: 4142
+      duration: 100ms
+    - rps: 4143
+      duration: 100ms
+    - rps: 4144
+      duration: 100ms
+    - rps: 4145
+      duration: 100ms
+    - rps: 4146
+      duration: 100ms
+    - rps: 4147
+      duration: 100ms
+    - rps: 4148
+      duration: 100ms
+    - rps: 4149
+      duration: 100ms
+    - rps: 4150
+      duration: 100ms
+    - rps: 4151
+      duration: 100ms
+    - rps: 4152
+      duration: 100ms
+    - rps: 4153
+      duration: 100ms
+    - rps: 4154
+      duration: 100ms
+    - rps: 4155
+      duration: 100ms
+    - rps: 4156
+      duration: 100ms
+    - rps: 4157
+      duration: 100ms
+    - rps: 4158
+      duration: 100ms
+    - rps: 4159
+      duration: 100ms
+    - rps: 4160
+      duration: 100ms
+    - rps: 4161
+      duration: 100ms
+    - rps: 4162
+      duration: 100ms
+    - rps: 4163
+      duration: 100ms
+    - rps: 4164
+      duration: 100ms
+    - rps: 4165
+      duration: 100ms
+    - rps: 4166
+      duration: 100ms
+    - rps: 4167
+      duration: 100ms
+    - rps: 4168
+      duration: 100ms
+    - rps: 4169
+      duration: 100ms
+    - rps: 4170
+      duration: 100ms
+    - rps: 4171
+      duration: 100ms
+    - rps: 4172
+      duration: 100ms
+    - rps: 4173
+      duration: 100ms
+    - rps: 4174
+      duration: 100ms
+    - rps: 4175
+      duration: 100ms
+    - rps: 4176
+      duration: 100ms
+    - rps: 4177
+      duration: 100ms
+    - rps: 4178
+      duration: 100ms
+    - rps: 4179
+      duration: 100ms
+    - rps: 4180
+      duration: 100ms
+    - rps: 4181
+      duration: 100ms
+    - rps: 4182
+      duration: 100ms
+    - rps: 4183
+      duration: 100ms
+    - rps: 4184
+      duration: 100ms
+    - rps: 4185
+      duration: 100ms
+    - rps: 4186
+      duration: 100ms
+    - rps: 4187
+      duration: 100ms
+    - rps: 4188
+      duration: 100ms
+    - rps: 4189
+      duration: 100ms
+    - rps: 4190
+      duration: 100ms
+    - rps: 4191
+      duration: 100ms
+    - rps: 4192
+      duration: 100ms
+    - rps: 4193
+      duration: 100ms
+    - rps: 4194
+      duration: 100ms
+    - rps: 4195
+      duration: 100ms
+    - rps: 4196
+      duration: 100ms
+    - rps: 4197
+      duration: 100ms
+    - rps: 4198
+      duration: 100ms
+    - rps: 4199
+      duration: 100ms
+    - rps: 4200
+      duration: 100ms
+    - rps: 4201
+      duration: 100ms
+    - rps: 4202
+      duration: 100ms
+    - rps: 4203
+      duration: 100ms
+    - rps: 4204
+      duration: 100ms
+    - rps: 4205
+      duration: 100ms
+    - rps: 4206
+      duration: 100ms
+    - rps: 4207
+      duration: 100ms
+    - rps: 4208
+      duration: 100ms
+    - rps: 4209
+      duration: 100ms
+    - rps: 4210
+      duration: 100ms
+    - rps: 4211
+      duration: 100ms
+    - rps: 4212
+      duration: 100ms
+    - rps: 4213
+      duration: 100ms
+    - rps: 4214
+      duration: 100ms
+    - rps: 4215
+      duration: 100ms
+    - rps: 4216
+      duration: 100ms
+    - rps: 4217
+      duration: 100ms
+    - rps: 4218
+      duration: 100ms
+    - rps: 4219
+      duration: 100ms
+    - rps: 4220
+      duration: 100ms
+    - rps: 4221
+      duration: 100ms
+    - rps: 4222
+      duration: 100ms
+    - rps: 4223
+      duration: 100ms
+    - rps: 4224
+      duration: 100ms
+    - rps: 4225
+      duration: 100ms
+    - rps: 4226
+      duration: 100ms
+    - rps: 4227
+      duration: 100ms
+    - rps: 4228
+      duration: 100ms
+    - rps: 4229
+      duration: 100ms
+    - rps: 4230
+      duration: 100ms
+    - rps: 4231
+      duration: 100ms
+    - rps: 4232
+      duration: 100ms
+    - rps: 4233
+      duration: 100ms
+    - rps: 4234
+      duration: 100ms
+    - rps: 4235
+      duration: 100ms
+    - rps: 4236
+      duration: 100ms
+    - rps: 4237
+      duration: 100ms
+    - rps: 4238
+      duration: 100ms
+    - rps: 4239
+      duration: 100ms
+    - rps: 4240
+      duration: 100ms
+    - rps: 4241
+      duration: 100ms
+    - rps: 4242
+      duration: 100ms
+    - rps: 4243
+      duration: 100ms
+    - rps: 4244
+      duration: 100ms
+    - rps: 4245
+      duration: 100ms
+    - rps: 4246
+      duration: 100ms
+    - rps: 4247
+      duration: 100ms
+    - rps: 4248
+      duration: 100ms
+    - rps: 4249
+      duration: 100ms
+    - rps: 4250
+      duration: 100ms
+    - rps: 4251
+      duration: 100ms
+    - rps: 4252
+      duration: 100ms
+    - rps: 4253
+      duration: 100ms
+    - rps: 4254
+      duration: 100ms
+    - rps: 4255
+      duration: 100ms
+    - rps: 4256
+      duration: 100ms
+    - rps: 4257
+      duration: 100ms
+    - rps: 4258
+      duration: 100ms
+    - rps: 4259
+      duration: 100ms
+    - rps: 4260
+      duration: 100ms
+    - rps: 4261
+      duration: 100ms
+    - rps: 4262
+      duration: 100ms
+    - rps: 4263
+      duration: 100ms
+    - rps: 4264
+      duration: 100ms
+    - rps: 4265
+      duration: 100ms
+    - rps: 4266
+      duration: 100ms
+    - rps: 4267
+      duration: 100ms
+    - rps: 4268
+      duration: 100ms
+    - rps: 4269
+      duration: 100ms
+    - rps: 4270
+      duration: 100ms
+    - rps: 4271
+      duration: 100ms
+    - rps: 4272
+      duration: 100ms
+    - rps: 4273
+      duration: 100ms
+    - rps: 4274
+      duration: 100ms
+    - rps: 4275
+      duration: 100ms
+    - rps: 4276
+      duration: 100ms
+    - rps: 4277
+      duration: 100ms
+    - rps: 4278
+      duration: 100ms
+    - rps: 4279
+      duration: 100ms
+    - rps: 4280
+      duration: 100ms
+    - rps: 4281
+      duration: 100ms
+    - rps: 4282
+      duration: 100ms
+    - rps: 4283
+      duration: 100ms
+    - rps: 4284
+      duration: 100ms
+    - rps: 4285
+      duration: 100ms
+    - rps: 4286
+      duration: 100ms
+    - rps: 4287
+      duration: 100ms
+    - rps: 4288
+      duration: 100ms
+    - rps: 4289
+      duration: 100ms
+    - rps: 4290
+      duration: 100ms
+    - rps: 4291
+      duration: 100ms
+    - rps: 4292
+      duration: 100ms
+    - rps: 4293
+      duration: 100ms
+    - rps: 4294
+      duration: 100ms
+    - rps: 4295
+      duration: 100ms
+    - rps: 4296
+      duration: 100ms
+    - rps: 4297
+      duration: 100ms
+    - rps: 4298
+      duration: 100ms
+    - rps: 4299
+      duration: 100ms
+    - rps: 4300
+      duration: 100ms
+    - rps: 4301
+      duration: 100ms
+    - rps: 4302
+      duration: 100ms
+    - rps: 4303
+      duration: 100ms
+    - rps: 4304
+      duration: 100ms
+    - rps: 4305
+      duration: 100ms
+    - rps: 4306
+      duration: 100ms
+    - rps: 4307
+      duration: 100ms
+    - rps: 4308
+      duration: 100ms
+    - rps: 4309
+      duration: 100ms
+    - rps: 4310
+      duration: 100ms
+    - rps: 4311
+      duration: 100ms
+    - rps: 4312
+      duration: 100ms
+    - rps: 4313
+      duration: 100ms
+    - rps: 4314
+      duration: 100ms
+    - rps: 4315
+      duration: 100ms
+    - rps: 4316
+      duration: 100ms
+    - rps: 4317
+      duration: 100ms
+    - rps: 4318
+      duration: 100ms
+    - rps: 4319
+      duration: 100ms
+    - rps: 4320
+      duration: 100ms
+    - rps: 4321
+      duration: 100ms
+    - rps: 4322
+      duration: 100ms
+    - rps: 4323
+      duration: 100ms
+    - rps: 4324
+      duration: 100ms
+    - rps: 4325
+      duration: 100ms
+    - rps: 4326
+      duration: 100ms
+    - rps: 4327
+      duration: 100ms
+    - rps: 4328
+      duration: 100ms
+    - rps: 4329
+      duration: 100ms
+    - rps: 4330
+      duration: 100ms
+    - rps: 4331
+      duration: 100ms
+    - rps: 4332
+      duration: 100ms
+    - rps: 4333
+      duration: 100ms
+    - rps: 4334
+      duration: 100ms
+    - rps: 4335
+      duration: 100ms
+    - rps: 4336
+      duration: 100ms
+    - rps: 4337
+      duration: 100ms
+    - rps: 4338
+      duration: 100ms
+    - rps: 4339
+      duration: 100ms
+    - rps: 4340
+      duration: 100ms
+    - rps: 4341
+      duration: 100ms
+    - rps: 4342
+      duration: 100ms
+    - rps: 4343
+      duration: 100ms
+    - rps: 4344
+      duration: 100ms
+    - rps: 4345
+      duration: 100ms
+    - rps: 4346
+      duration: 100ms
+    - rps: 4347
+      duration: 100ms
+    - rps: 4348
+      duration: 100ms
+    - rps: 4349
+      duration: 100ms
+    - rps: 4350
+      duration: 100ms
+    - rps: 4351
+      duration: 100ms
+    - rps: 4352
+      duration: 100ms
+    - rps: 4353
+      duration: 100ms
+    - rps: 4354
+      duration: 100ms
+    - rps: 4355
+      duration: 100ms
+    - rps: 4356
+      duration: 100ms
+    - rps: 4357
+      duration: 100ms
+    - rps: 4358
+      duration: 100ms
+    - rps: 4359
+      duration: 100ms
+    - rps: 4360
+      duration: 100ms
+    - rps: 4361
+      duration: 100ms
+    - rps: 4362
+      duration: 100ms
+    - rps: 4363
+      duration: 100ms
+    - rps: 4364
+      duration: 100ms
+    - rps: 4365
+      duration: 100ms
+    - rps: 4366
+      duration: 100ms
+    - rps: 4367
+      duration: 100ms
+    - rps: 4368
+      duration: 100ms
+    - rps: 4369
+      duration: 100ms
+    - rps: 4370
+      duration: 100ms
+    - rps: 4371
+      duration: 100ms
+    - rps: 4372
+      duration: 100ms
+    - rps: 4373
+      duration: 100ms
+    - rps: 4374
+      duration: 100ms
+    - rps: 4375
+      duration: 100ms
+    - rps: 4376
+      duration: 100ms
+    - rps: 4377
+      duration: 100ms
+    - rps: 4378
+      duration: 100ms
+    - rps: 4379
+      duration: 100ms
+    - rps: 4380
+      duration: 100ms
+    - rps: 4381
+      duration: 100ms
+    - rps: 4382
+      duration: 100ms
+    - rps: 4383
+      duration: 100ms
+    - rps: 4384
+      duration: 100ms
+    - rps: 4385
+      duration: 100ms
+    - rps: 4386
+      duration: 100ms
+    - rps: 4387
+      duration: 100ms
+    - rps: 4388
+      duration: 100ms
+    - rps: 4389
+      duration: 100ms
+    - rps: 4390
+      duration: 100ms
+    - rps: 4391
+      duration: 100ms
+    - rps: 4392
+      duration: 100ms
+    - rps: 4393
+      duration: 100ms
+    - rps: 4394
+      duration: 100ms
+    - rps: 4395
+      duration: 100ms
+    - rps: 4396
+      duration: 100ms
+    - rps: 4397
+      duration: 100ms
+    - rps: 4398
+      duration: 100ms
+    - rps: 4399
+      duration: 100ms
+    - rps: 4700
+      duration: 60s
+    rq_timeout: 500s
+    target_server:
+      address: 0.0.0.0
+      port: 9001
+  - workload:
+      - rps: 3500
+        duration: 100s
+    rq_timeout: 500s
+    target_server:
+      address: 0.0.0.0
+      port: 9001
+  - workload:
+      - rps: 3500
+        duration: 100s
+    rq_timeout: 500s
+    target_server:
+      address: 0.0.0.0
+      port: 9001
+servers:
+  - profile:
+    - duration: 100s
       latency_distribution:
-      - weight: 90
-        latency: 1ms
       - weight: 5
-        latency: 4ms
-      - weight: 3
-        latency: 6ms
-      - weight: 1
-        latency: 8ms
-      - weight: 1
-        latency: 16ms
-  listen_port: 9002
-  threads: 8
+        latency: 2ms
+    listen_port: 9002
+    threads: 24
