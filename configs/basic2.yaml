@@ -1,11 +1,7 @@
 clients:
   - workload:
     - rps: 2000
-      duration: 20s
-    - rps: 3600
-      duration: 10s
-    - rps: 2000
-      duration: 30s
+      duration: 60s
     rq_timeout: 500s
     retry_count: 0
     target_server:
@@ -27,7 +23,15 @@ clients:
         #     port: 9001
 servers:
   - profile:
-    - duration: 60s
+    - duration: 20s
+      latency_distribution:
+      - weight: 5
+        latency: 3ms
+    - duration: 10s
+      latency_distribution:
+      - weight: 5
+        latency: 6ms
+    - duration: 20s
       latency_distribution:
       - weight: 5
         latency: 3ms

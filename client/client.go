@@ -7,8 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"allen.gg/bufferbloater/stats"
 	"go.uber.org/zap"
+
+	"allen.gg/bufferbloater/stats"
 )
 
 type WorkloadStage struct {
@@ -25,6 +26,7 @@ type Config struct {
 	Workload       []WorkloadStage
 	RequestTimeout time.Duration
 	TargetServer   Target
+	RetryCount     int
 }
 
 type Client struct {
@@ -44,12 +46,8 @@ func NewClient(tenantId uint, config Config, logger *zap.SugaredLogger, sm *stat
 		log:      logger,
 		statsMgr: sm,
 		httpClient: &http.Client{
-			Timeout: config.RequestTimeout,
-			Transport: &http.Transport{
-				MaxIdleConns:        10000,
-				MaxIdleConnsPerHost: 10000,
-				IdleConnTimeout:     90 * time.Second,
-			},
+			Timeout:   config.RequestTimeout,
+			Transport: &http.Transport{},
 		},
 	}
 
@@ -59,7 +57,11 @@ func NewClient(tenantId uint, config Config, logger *zap.SugaredLogger, sm *stat
 	return &c
 }
 
-func (c *Client) sendWorkloadRequest() {
+func (c *Client) sendWorkloadRequest(numRetries int) {
+	if numRetries < 0 {
+		return
+	}
+
 	defer c.statsMgr.Incr("client.rq.total.count", c.tid)
 	targetString := fmt.Sprintf("http://%s:%d", c.config.TargetServer.Address, c.config.TargetServer.Port)
 
@@ -75,16 +77,7 @@ func (c *Client) sendWorkloadRequest() {
 	// Tells the server to close the connection when done.
 	req.Close = true
 
-	httpClient := http.Client{
-		Timeout: c.config.RequestTimeout,
-		Transport: &http.Transport{
-			MaxIdleConns:        10000,
-			MaxIdleConnsPerHost: 10000,
-			IdleConnTimeout:     90 * time.Second,
-		},
-	}
-
-	resp, err := httpClient.Do(req)
+	resp, err := c.httpClient.Do(req)
 	latency := time.Since(rqStart)
 
 	// Handle timeouts and report error otherwise.
@@ -101,23 +94,27 @@ func (c *Client) sendWorkloadRequest() {
 		c.statsMgr.Incr("client.rq.failure.count", c.tid)
 		return
 	}
-	defer resp.Body.Close()
+	resp.Body.Close()
 
 	switch resp.StatusCode {
 	case http.StatusOK:
 		c.statsMgr.DirectMeasurement("client.rq.latency", rqStart, float64(latency.Seconds()), c.tid)
 		c.statsMgr.DirectMeasurement("client.rq.success_hist", rqStart, 1.0, c.tid)
 		c.statsMgr.Incr("client.rq.success.count", c.tid)
-	case http.StatusServiceUnavailable:
+		return
+	case http.StatusServiceUnavailable, http.StatusTooManyRequests:
 		c.statsMgr.DirectMeasurement("client.rq.503", rqStart, 1.0, c.tid)
 		c.statsMgr.Incr("client.rq.failure.count", c.tid)
 	case http.StatusRequestTimeout, http.StatusGatewayTimeout:
-		c.log.Warnw("request timed out", "client", c.tid)
 		c.statsMgr.DirectMeasurement("client.rq.timeout", rqStart, 1.0, c.tid)
 	default:
 		c.log.Fatalw("wtf is this", "status", resp.StatusCode, "resp", resp, "client", c.tid)
 	}
 
+	if numRetries > 0 {
+		c.statsMgr.Incr("client.rq.retry.count", c.tid)
+		go c.sendWorkloadRequest(numRetries - 1)
+	}
 }
 
 func (c *Client) processWorkloadStage(ws WorkloadStage) {
@@ -139,7 +136,7 @@ func (c *Client) processWorkloadStage(ws WorkloadStage) {
 				return
 			case <-ticker.C:
 				c.statsMgr.Set("client.rps", float64(ws.RPS), c.tid)
-				go c.sendWorkloadRequest()
+				go c.sendWorkloadRequest(c.config.RetryCount)
 			}
 		}
 	}(&wg)

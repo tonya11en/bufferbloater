@@ -58,17 +58,14 @@ func (s *StatsMgr) DirectMeasurement(k string, t time.Time, val float64, tid uin
 }
 
 func (s *StatsMgr) sample() {
-	s.mtx.Lock()
 	now := time.Now()
 
 	for statName, val := range s.statsVals {
 		s.sampleCollection[statName] =
 			append(s.sampleCollection[statName],
 				Sample{timestamp: now, val: val})
+		s.statsVals[statName] = 0.0
 	}
-
-	s.statsVals = make(map[string]float64)
-	s.mtx.Unlock()
 }
 
 func (s *StatsMgr) DumpStatsToFolder(folderName string) error {
@@ -110,7 +107,17 @@ func (s *StatsMgr) PeriodicStatsCollection(period time.Duration, done chan struc
 		case <-done:
 			return
 		case <-ticker.C:
-			s.sample()
+			// Gross...
+			{
+				s.mtx.Lock()
+				if s.statsVals["client.rps.0"] == 0.0 {
+					s.log.Infow("I think it's done... exiting")
+					s.mtx.Unlock()
+					return
+				}
+				s.sample()
+				s.mtx.Unlock()
+			}
 		}
 	}
 }

@@ -1,16 +1,16 @@
 clients:
   - workload:
-    - rps: 2000
+    - rps: 200
       duration: 20s
-    - rps: 3600
-      duration: 10s
-    - rps: 2000
-      duration: 30s
+    - rps: 360
+      duration: 1s
+    - rps: 200
+      duration: 9s
     rq_timeout: 500s
     retry_count: 0
     target_server:
       address: 127.0.0.1
-      port: 9001
+      port: 9002
         # - workload:
         #   - rps: 800
         #     duration: 35s
@@ -27,9 +27,29 @@ clients:
         #     port: 9001
 servers:
   - profile:
-    - duration: 60s
+    - duration: 30s
       latency_distribution:
-      - weight: 5
+      - weight: 50
         latency: 3ms
+      - weight: 5
+        latency: 5ms
+      - weight: 5
+        latency: 7ms
+      - weight: 5
+        latency: 10ms
+      - weight: 5
+        latency: 15ms
+      - weight: 5
+        latency: 22ms
+      - weight: 5
+        latency: 34ms
+      - weight: 5
+        latency: 51ms
+      - weight: 5
+        latency: 76ms
+      - weight: 5
+        latency: 115ms
+      - weight: 5
+        latency: 150ms
     listen_port: 9002
     threads: 8

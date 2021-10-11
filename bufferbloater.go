@@ -33,6 +33,7 @@ type clientConfig struct {
 		Address string
 		Port    uint
 	} `yaml:"target_server"`
+	RetryCount int `yaml:"retry_count"`
 }
 
 type serverConfig struct {
@@ -62,6 +63,7 @@ func clientConfigParse(cc clientConfig) (client.Config, error) {
 			Address: cc.TargetServer.Address,
 			Port:    cc.TargetServer.Port,
 		},
+		RetryCount: cc.RetryCount,
 	}
 
 	d, err := time.ParseDuration(cc.RqTimeout)

@@ -129,6 +129,7 @@ func (s *Server) currentRequestLatency() time.Duration {
 }
 
 func (s *Server) requestHandler(w http.ResponseWriter, req *http.Request) {
+	s.statsMgr.Set("server.expected_latency", float64(s.currentRequestLatency().Milliseconds())/1000, s.tid)
 	rq := request{
 		rcvTime:  time.Now(),
 		progress: 0 * time.Microsecond,
