@@ -12,7 +12,7 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/tonya11en/bufferbloater/stats"
+	"allen.gg/bufferbloater/stats"
 )
 
 type WeightedLatency struct {
@@ -40,12 +40,11 @@ type request struct {
 }
 
 type Server struct {
-	config         Config
-	log            *zap.SugaredLogger
-	activeRequests int32
-	srv            *http.Server
-	mux            *http.ServeMux
-	statsMgr       *stats.StatsMgr
+	config   Config
+	log      *zap.SugaredLogger
+	srv      *http.Server
+	mux      *http.ServeMux
+	statsMgr *stats.StatsMgr
 
 	// Only allow a certain number of requests to be serviced (sleeped) at a time.
 	sem       chan struct{}
@@ -53,10 +52,14 @@ type Server struct {
 
 	// This is relevant for determining where we are time-wise in the simulation.
 	startTime time.Time
+
+	// Tenant ID.
+	tid uint
 }
 
-func NewServer(config Config, logger *zap.SugaredLogger, sm *stats.StatsMgr) *Server {
+func NewServer(tenantId uint, config Config, logger *zap.SugaredLogger, sm *stats.StatsMgr) *Server {
 	s := Server{
+		tid:      tenantId,
 		config:   config,
 		log:      logger,
 		mux:      http.NewServeMux(),
@@ -75,9 +78,7 @@ func NewServer(config Config, logger *zap.SugaredLogger, sm *stats.StatsMgr) *Se
 		ReadTimeout: 10 * time.Second,
 	}
 
-	logger.Infow("done creating server",
-		"config", s.config,
-		"srv", s.srv)
+	logger.Infow("done creating server", "config", s.config)
 
 	return &s
 }
@@ -128,12 +129,15 @@ func (s *Server) currentRequestLatency() time.Duration {
 }
 
 func (s *Server) requestHandler(w http.ResponseWriter, req *http.Request) {
+	s.statsMgr.Set("server.expected_latency", float64(s.currentRequestLatency().Milliseconds())/1000, s.tid)
 	rq := request{
 		rcvTime:  time.Now(),
-		progress: 0 * time.Nanosecond,
+		progress: 0 * time.Microsecond,
 	}
 
+	// Must increment the queue size before "work" begins.
 	sz := atomic.AddInt32(&s.queueSize, 1)
+	defer atomic.AddInt32(&s.queueSize, -1)
 
 	// This is the "servicing" of a request. The semaphore asserts the
 	// concurrency.
@@ -149,10 +153,7 @@ func (s *Server) requestHandler(w http.ResponseWriter, req *http.Request) {
 		rq.progress += workDuration
 	}
 
-	sz = atomic.AddInt32(&s.queueSize, -1)
-	s.statsMgr.Set("server.queue.size", float64(sz))
-
-	return
+	s.statsMgr.Set("server.queue.size", float64(sz), s.tid)
 }
 
 func (s *Server) Start(wg *sync.WaitGroup) {

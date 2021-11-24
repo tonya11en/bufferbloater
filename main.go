@@ -1,24 +1,26 @@
 package main
 
 import (
-	"os"
+	"flag"
 
 	"go.uber.org/zap"
 )
 
-func main() {
-	if len(os.Args) < 2 {
-		panic("failed to provide a config file")
-	}
-	configFile := os.Args[1]
+var configFile = flag.String("config", "", "Specifies the config file to use")
 
+func main() {
 	logger, err := zap.NewDevelopment()
 	if err != nil {
 		panic("couldn't initialize logging")
 	}
 	sugar := logger.Sugar()
 
-	bb, err := NewBufferbloater(configFile, sugar)
+	flag.Parse()
+	if *configFile == "" {
+		sugar.Fatalw("configuration file not specified")
+	}
+
+	bb, err := NewBufferbloater(*configFile, sugar)
 	if err != nil {
 		sugar.Fatalw("failed to create bufferbloater",
 			"error", err)

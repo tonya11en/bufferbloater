@@ -6,22 +6,23 @@ import (
 
 	"gopkg.in/yaml.v2"
 
+	"allen.gg/bufferbloater/server"
 	"github.com/stretchr/testify/assert"
-	"github.com/tonya11en/bufferbloater/server"
 )
 
-var validYamlString = `client:
-  workload:
-    - rps: 100
-      duration: 500us
-    - rps: 500
-      duration: 30ms
-  rq_timeout: 100ms
-  target_server:
-    address: 0.0.0.0
-    port: 9001
-server:
-  profile:
+var validYamlString = `
+clients:
+  - workload:
+      - rps: 100
+        duration: 500us
+      - rps: 500
+        duration: 30ms
+    rq_timeout: 100ms
+    target_server:
+      address: 0.0.0.0
+      port: 9001
+servers:
+  - profile:
     - duration: 20s
       latency_distribution:
       - weight: 49
@@ -34,8 +35,8 @@ server:
         latency: 3ms
       - weight: 50
         latency: 4ms
-  listen_port: 9002
-  threads: 1`
+    listen_port: 9002
+    threads: 1`
 
 func TestServerParsing(t *testing.T) {
 	var parsedConfig parsedYamlConfig
@@ -44,29 +45,29 @@ func TestServerParsing(t *testing.T) {
 
 	expected := server.Config{
 		Profile: []server.LatencySegment{
-			server.LatencySegment{
+			{
 				WeightSum:       100,
 				SegmentDuration: time.Second * 20,
 				LatencyDistribution: []server.WeightedLatency{
-					server.WeightedLatency{
+					{
 						Weight:  49,
 						Latency: time.Millisecond * 1,
 					},
-					server.WeightedLatency{
+					{
 						Weight:  51,
 						Latency: time.Millisecond * 2,
 					},
 				},
 			},
-			server.LatencySegment{
+			{
 				WeightSum:       98,
 				SegmentDuration: time.Second * 5,
 				LatencyDistribution: []server.WeightedLatency{
-					server.WeightedLatency{
+					{
 						Weight:  48,
 						Latency: time.Millisecond * 3,
 					},
-					server.WeightedLatency{
+					{
 						Weight:  50,
 						Latency: time.Millisecond * 4,
 					},
@@ -77,8 +78,9 @@ func TestServerParsing(t *testing.T) {
 		Threads:    1,
 	}
 
-	ss, err := serverConfigParse(parsedConfig)
+	ss, err := serverConfigParse(parsedConfig.Servers[0])
 	assert.Equal(t, expected, ss)
+	assert.Nil(t, err)
 }
 
 func TestClientParsing(t *testing.T) {
@@ -86,7 +88,7 @@ func TestClientParsing(t *testing.T) {
 	err := yaml.UnmarshalStrict([]byte(validYamlString), &parsedConfig)
 	assert.Equal(t, err, nil)
 
-	cc, err := clientConfigParse(parsedConfig)
+	cc, err := clientConfigParse(parsedConfig.Clients[0])
 	assert.Equal(t, err, nil)
 	assert.Equal(t, cc.TargetServer.Address, "0.0.0.0")
 	assert.Equal(t, cc.TargetServer.Port, uint(9001))
