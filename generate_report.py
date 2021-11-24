@@ -79,8 +79,6 @@ for i in range(1):
     ax3.set_xlabel('Time (s)')
     ax3.plot(adjust(goodput_x), goodput_y, color=colors[i])
     ax3.set_xlim([0,xend])
-    ax3.axvline(x=20, label="start event")
-    ax3.axvline(x=30, label="end event")
 
 plt.legend()
 plt.show()

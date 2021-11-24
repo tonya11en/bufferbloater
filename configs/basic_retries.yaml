@@ -11,20 +11,6 @@ clients:
     target_server:
       address: 127.0.0.1
       port: 9001
-        # - workload:
-        #   - rps: 800
-        #     duration: 35s
-        #   rq_timeout: 500s
-        #   target_server:
-        #     address: 0.0.0.0
-        #     port: 9001
-        # - workload:
-        #   - rps: 800
-        #     duration: 35s
-        #   rq_timeout: 500s
-        #   target_server:
-        #     address: 0.0.0.0
-        #     port: 9001
 servers:
   - profile:
     - duration: 60s
