@@ -30,6 +30,7 @@ servers:
         latency: 3ms
     listen_port: 9002
     threads: 8
+```
 
 ### Client
 
