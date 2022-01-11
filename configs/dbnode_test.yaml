@@ -1,0 +1,21 @@
+clients:
+  - workload:
+    - rps: 1000
+      duration: 10s
+    - rps: 3000
+      duration: 10s
+    - rps: 5000
+      duration: 10s
+    - rps: 7000
+      duration: 10s
+    - rps: 9000
+      duration: 10s
+    - rps: 11000
+      duration: 10s
+    rq_timeout: 500s
+    retry_count: 0
+    target_server:
+      address: 127.0.0.1
+        #port: 7201
+      port: 6969
+servers:

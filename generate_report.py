@@ -4,9 +4,8 @@ import matplotlib
 import matplotlib.pyplot as plt
 import csv, sys, os
 import numpy as np
-import pandas as pd
 
-matplotlib.rcParams.update({'font.size': 22})
+matplotlib.rcParams.update({'font.size': 18})
 
 # Stats dump interval so we can calculate rates.
 dt = 0.5
@@ -38,7 +37,7 @@ def xy_from_csv(filename):
     return x, y
 
 colors = ["blue", "green", "red"]
-fig, (ax2, ax1, ax3) = plt.subplots(3)
+fig, (ax2, ax1, ax3, ax4, ax5) = plt.subplots(5)
 for i in range(1):
     # We want to plot the request are, latency, and the moment timeouts happen.
     # While we're at it, let's just adjust the timestamp to be relative to the
@@ -47,22 +46,26 @@ for i in range(1):
     out_rq_rate_x, out_rq_rate_y = xy_from_csv("client.rq.total.count.{}.csv".format(i))
     retry_rate_x, retry_rate_y = xy_from_csv("client.rq.retry.count.{}.csv".format(i))
     rq_latency_x, rq_latency_y = xy_from_csv("client.rq.latency.{}.csv".format(i))
+    rq_timeout_x, rq_timeout_y = xy_from_csv("client.rq.timeout.{}.csv".format(i))
+    rq_503_x, rq_503_y = xy_from_csv("client.rq.503.{}.csv".format(i))
     success_stamps, _ = xy_from_csv("client.rq.success_hist.{}.csv".format(i))
     goodput_x, goodput_y = xy_from_csv("client.rq.success.count.{}.csv".format(i))
+    failures_x, failures_y = xy_from_csv("client.rq.failure.count.{}.csv".format(i))
     expected_latency_x, expected_latency_y = xy_from_csv("server.expected_latency.{}.csv".format(i))
+    active_rq_x, active_rq_y = xy_from_csv("client.active_rq.{}.csv".format(i))
 
     # Adjust for dt.
     goodput_y = list(map(lambda x: x / dt, goodput_y))
 
-    xstart = min(in_rq_rate_x + out_rq_rate_x + rq_latency_x + goodput_x)
-    xend = 60#(max(in_rq_rate_x + out_rq_rate_x + rq_latency_x + goodput_x) - xstart)/1e9
+    xstart = min(in_rq_rate_x + out_rq_rate_x + rq_latency_x + failures_x + goodput_x + rq_timeout_x + rq_503_x)
+    xend = (max(in_rq_rate_x + out_rq_rate_x + rq_latency_x + failures_x + goodput_x + rq_timeout_x + rq_503_x) - xstart)/1e9
     def adjust(xs):
         return list(map(lambda x: (x - xstart)/1e9, xs))
 
     ax1.set_xlabel('Time (s)')
     ax1.set_ylabel('Request Latency')
     #ax1.set_yscale('log') # log scale
-    ax1.plot(adjust(rq_latency_x),rq_latency_y, color=colors[i], label="observed latency")
+    ax1.scatter(adjust(rq_latency_x),rq_latency_y, color=colors[i], label="observed latency")
     ax1.tick_params(axis='y', labelcolor="black")
     ax1.set_xlim([0,xend])
     ax1.legend()
@@ -79,6 +82,31 @@ for i in range(1):
     ax3.set_xlabel('Time (s)')
     ax3.plot(adjust(goodput_x), goodput_y, color=colors[i])
     ax3.set_xlim([0,xend])
+
+    ax4.set_ylabel("5xx / sec")
+    ax4.set_xlabel('Time (s)')
+    rq_timeout_x = adjust(rq_timeout_x)
+    rq_503_x = adjust(rq_503_x)
+    adjusted_timeout_x = [0] * int(xend+1)
+    for i in rq_503_x:
+        adjusted_503_x[int(i)] += 1
+
+    adjusted_503_x =  [0] * int(xend+1)
+    for i in rq_timeout_x:
+        adjusted_timeout_x[int(i)] += 1
+
+    hx = [adjusted_timeout_x, adjusted_503_x]
+    ax4.plot(adjusted_503_x, color="green", label="503")
+    ax4.plot(adjusted_timeout_x, color="orange", label="504")
+    ax4.plot(adjust(failures_x), failures_y, color="red", label="cx error")
+    #ax4.hist(hx, n_bins, density=True, histtype='bar', stacked=True, color=['red', 'green'], label=["timeouts (504)", "shedding (503)"])
+    ax4.set_xlim([0,xend])
+
+    ax5.set_xlabel('Time (s)')
+    ax5.set_ylabel('Active Requests')
+    ax5.plot(adjust(active_rq_x),active_rq_y)
+    ax5.set_xlim([0,xend])
+    
 
 plt.legend()
 plt.show()
