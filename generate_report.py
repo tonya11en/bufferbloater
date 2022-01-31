@@ -1,6 +1,7 @@
 #! /usr/bin/python
 
 import matplotlib
+import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import csv, sys, os
 import numpy as np
@@ -37,7 +38,7 @@ def xy_from_csv(filename):
     return x, y
 
 colors = ["blue", "green", "red"]
-fig, (ax2, ax1, ax3, ax4, ax5) = plt.subplots(5)
+fig, (ax2, ax1, ax3, ax5) = plt.subplots(4)
 for i in range(1):
     # We want to plot the request are, latency, and the moment timeouts happen.
     # While we're at it, let's just adjust the timestamp to be relative to the
@@ -65,10 +66,14 @@ for i in range(1):
     ax1.set_xlabel('Time (s)')
     ax1.set_ylabel('Request Latency')
     #ax1.set_yscale('log') # log scale
-    ax1.scatter(adjust(rq_latency_x),rq_latency_y, color=colors[i], label="observed latency")
-    ax1.tick_params(axis='y', labelcolor="black")
+    #ax1.scatter(adjust(rq_latency_x),rq_latency_y, color=colors[i], label="observed latency")
+    ax1.hist2d(adjust(rq_latency_x),rq_latency_y, bins=128, norm=mcolors.LogNorm())
+    ax1.axhline(y=1.0, color='r')
+
+#    ax1.tick_params(axis='y', labelcolor="black")
     ax1.set_xlim([0,xend])
-    ax1.legend()
+#    ax1.set_ylim([0,2.0])
+#    ax1.legend()
 
     ax2.set_xlabel('Time (s)')
     ax2.set_ylabel('Offered Load')
@@ -80,27 +85,10 @@ for i in range(1):
 
     ax3.set_ylabel("Goodput")
     ax3.set_xlabel('Time (s)')
-    ax3.plot(adjust(goodput_x), goodput_y, color=colors[i])
+    ax3.plot(adjust(goodput_x), goodput_y, color=colors[i], label="goodput")
+    ax3.plot(adjust(failures_x), failures_y, color="red", label="failed rq")
     ax3.set_xlim([0,xend])
 
-    ax4.set_ylabel("5xx / sec")
-    ax4.set_xlabel('Time (s)')
-    rq_timeout_x = adjust(rq_timeout_x)
-    rq_503_x = adjust(rq_503_x)
-    adjusted_timeout_x = [0] * int(xend+1)
-    for i in rq_503_x:
-        adjusted_503_x[int(i)] += 1
-
-    adjusted_503_x =  [0] * int(xend+1)
-    for i in rq_timeout_x:
-        adjusted_timeout_x[int(i)] += 1
-
-    hx = [adjusted_timeout_x, adjusted_503_x]
-    ax4.plot(adjusted_503_x, color="green", label="503")
-    ax4.plot(adjusted_timeout_x, color="orange", label="504")
-    ax4.plot(adjust(failures_x), failures_y, color="red", label="cx error")
-    #ax4.hist(hx, n_bins, density=True, histtype='bar', stacked=True, color=['red', 'green'], label=["timeouts (504)", "shedding (503)"])
-    ax4.set_xlim([0,xend])
 
     ax5.set_xlabel('Time (s)')
     ax5.set_ylabel('Active Requests')

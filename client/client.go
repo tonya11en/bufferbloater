@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"math/rand"
 	"net"
 	"net/http"
@@ -154,6 +155,10 @@ func (c *Client) makeRequest() (promremote.WriteResult, error) {
 					Value: "foofoo", //RandStringBytes(3),
 				},
 				{
+					Name:  "random_label",
+					Value: RandStringBytes(3),
+				},
+				{
 					Name:  "foo",
 					Value: "bar",
 				},
@@ -233,6 +238,10 @@ func (c *Client) processWorkloadStage(ws WorkloadStage) {
 	for i := 0; i < numWorkers; i++ {
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
+			// We want a jitter here.
+			jitterUsec := math.Abs(rand.NormFloat64()) / math.MaxFloat64 * float64(requestSpacing.Microseconds())
+			time.Sleep(time.Duration(jitterUsec) * time.Microsecond)
+
 			ticker := time.NewTicker(requestSpacing)
 			defer wg.Done()
 			for {
