@@ -198,6 +198,8 @@ func (bb *Bufferbloater) Run() {
 		go s.Start(&wg)
 	}
 
+	time.Sleep(time.Second)
+
 	// Start clients.
 	for _, c := range bb.c {
 		wg.Add(1)

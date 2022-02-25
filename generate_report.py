@@ -38,7 +38,7 @@ def xy_from_csv(filename):
     return x, y
 
 colors = ["blue", "green", "red"]
-fig, (ax2, ax1, ax3, ax5) = plt.subplots(4)
+fig, (ax1, ax2) = plt.subplots(2)
 for i in range(1):
     # We want to plot the request are, latency, and the moment timeouts happen.
     # While we're at it, let's just adjust the timestamp to be relative to the
@@ -55,45 +55,41 @@ for i in range(1):
     expected_latency_x, expected_latency_y = xy_from_csv("server.expected_latency.{}.csv".format(i))
     active_rq_x, active_rq_y = xy_from_csv("client.active_rq.{}.csv".format(i))
 
+    high_client_x, high_client_y = xy_from_csv("client.rq.high.count.{}.csv".format(i))
+    default_client_x, default_client_y = xy_from_csv("client.rq.default.count.{}.csv".format(i))
+    low_client_x, low_client_y = xy_from_csv("client.rq.low.count.{}.csv".format(i))
+
+    high_admitted_x, high_admitted_y = xy_from_csv("server.high.processed.success.{}.csv".format(i))
+    default_admitted_x, default_admitted_y = xy_from_csv("server.default.processed.success.{}.csv".format(i))
+    low_admitted_x, low_admitted_y = xy_from_csv("server.low.processed.success.{}.csv".format(i))
+
+    high_throttled_x, high_throttled_y = xy_from_csv("server.high.processed.throttled.{}.csv".format(i))
+    default_throttled_x, default_throttled_y = xy_from_csv("server.default.processed.throttled.{}.csv".format(i))
+    low_throttled_x, low_throttled_y = xy_from_csv("server.low.processed.throttled.{}.csv".format(i))
+
     # Adjust for dt.
     goodput_y = list(map(lambda x: x / dt, goodput_y))
 
-    xstart = min(in_rq_rate_x + out_rq_rate_x + rq_latency_x + failures_x + goodput_x + rq_timeout_x + rq_503_x)
-    xend = (max(in_rq_rate_x + out_rq_rate_x + rq_latency_x + failures_x + goodput_x + rq_timeout_x + rq_503_x) - xstart)/1e9
+    xstart = min(low_admitted_x + default_admitted_x + high_admitted_x + in_rq_rate_x + out_rq_rate_x + rq_latency_x + failures_x + goodput_x + rq_timeout_x + rq_503_x)
+    xend = (max(low_admitted_x + default_admitted_x + high_admitted_x +in_rq_rate_x + out_rq_rate_x + rq_latency_x + failures_x + goodput_x + rq_timeout_x + rq_503_x) - xstart)/1e9
     def adjust(xs):
         return list(map(lambda x: (x - xstart)/1e9, xs))
 
+    ax1.set_ylabel("Admitted")
     ax1.set_xlabel('Time (s)')
-    ax1.set_ylabel('Request Latency')
-    #ax1.set_yscale('log') # log scale
-    #ax1.scatter(adjust(rq_latency_x),rq_latency_y, color=colors[i], label="observed latency")
-    ax1.hist2d(adjust(rq_latency_x),rq_latency_y, bins=128, norm=mcolors.LogNorm())
-    ax1.axhline(y=1.0, color='r')
-
-#    ax1.tick_params(axis='y', labelcolor="black")
+    ax1.plot(adjust(high_admitted_x), high_admitted_y, color="orange", label="high_pri")
+    ax1.plot(adjust(default_admitted_x), default_admitted_y, color="blue", label="default_pri")
+    ax1.plot(adjust(low_admitted_x), low_admitted_y, color="gray", label="low_pri")
     ax1.set_xlim([0,xend])
-#    ax1.set_ylim([0,2.0])
-#    ax1.legend()
+    ax1.legend()
 
+    ax2.set_ylabel("Sent")
     ax2.set_xlabel('Time (s)')
-    ax2.set_ylabel('Offered Load')
-    ax2.plot(adjust(in_rq_rate_x),in_rq_rate_y, label="inbound load")
-    ax2.plot(adjust(retry_rate_x),retry_rate_y, color="red", label="retries")
-    ax2.tick_params(axis='y', labelcolor="blue")
+    ax2.plot(adjust(high_client_x), high_client_y, color="orange", label="high_pri")
+    ax2.plot(adjust(default_client_x), default_client_y, color="blue", label="default_pri")
+    ax2.plot(adjust(low_client_x), low_client_y, color="gray", label="low_pri")
     ax2.set_xlim([0,xend])
     ax2.legend()
-
-    ax3.set_ylabel("Goodput")
-    ax3.set_xlabel('Time (s)')
-    ax3.plot(adjust(goodput_x), goodput_y, color=colors[i], label="goodput")
-    ax3.plot(adjust(failures_x), failures_y, color="red", label="failed rq")
-    ax3.set_xlim([0,xend])
-
-
-    ax5.set_xlabel('Time (s)')
-    ax5.set_ylabel('Active Requests')
-    ax5.plot(adjust(active_rq_x),active_rq_y)
-    ax5.set_xlim([0,xend])
     
 
 plt.legend()

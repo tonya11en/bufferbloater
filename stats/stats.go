@@ -105,16 +105,12 @@ func (s *StatsMgr) PeriodicStatsCollection(period time.Duration, done chan struc
 	for {
 		select {
 		case <-done:
+			s.log.Infow("stats collection completed")
 			return
 		case <-ticker.C:
 			// Gross...
 			{
 				s.mtx.Lock()
-				if s.statsVals["client.rps.0"] == 0.0 {
-					s.log.Infow("I think it's done... exiting")
-					s.mtx.Unlock()
-					return
-				}
 				s.sample()
 				s.mtx.Unlock()
 			}

@@ -4,14 +4,16 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"net"
 	"net/http"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
 
+	pb "allen.gg/bufferbloater/helloworld"
 	"allen.gg/bufferbloater/stats"
 )
 
@@ -32,17 +34,59 @@ type Config struct {
 	Threads    uint
 }
 
-type request struct {
-	// When the request came in.
-	rcvTime time.Time
+type tokenBucket struct {
+	tokens        int64
+	maxTokens     int64
+	refreshAmount int64
+	interval      time.Duration
+	mtx           sync.Mutex
+}
 
-	progress time.Duration
+func NewTokenBucket(interval time.Duration, maxTokens int64, refreshAmount int64) *tokenBucket {
+	tb := &tokenBucket{
+		tokens:        maxTokens,
+		maxTokens:     maxTokens,
+		refreshAmount: refreshAmount,
+		interval:      interval,
+	}
+
+	tb.start()
+
+	return tb
+}
+
+func (tb *tokenBucket) start() {
+	go func() {
+		tick := time.NewTicker(tb.interval)
+		for <-tick.C; true; <-tick.C {
+			tb.mtx.Lock()
+			tb.tokens = tb.tokens + tb.refreshAmount
+			if tb.tokens > tb.maxTokens {
+				tb.tokens = tb.maxTokens
+			}
+			tb.mtx.Unlock()
+		}
+	}()
+}
+
+func (tb *tokenBucket) Admit() bool {
+	tb.mtx.Lock()
+	defer tb.mtx.Unlock()
+
+	if tb.tokens > 0 {
+		tb.tokens--
+		return true
+	}
+
+	return false
 }
 
 type Server struct {
+	pb.UnimplementedGreeterServer
+
 	config   Config
 	log      *zap.SugaredLogger
-	srv      *http.Server
+	srv      *grpc.Server
 	mux      *http.ServeMux
 	statsMgr *stats.StatsMgr
 
@@ -55,6 +99,9 @@ type Server struct {
 
 	// Tenant ID.
 	tid uint
+
+	lis     net.Listener
+	limiter *tokenBucket
 }
 
 func NewServer(tenantId uint, config Config, logger *zap.SugaredLogger, sm *stats.StatsMgr) *Server {
@@ -65,6 +112,7 @@ func NewServer(tenantId uint, config Config, logger *zap.SugaredLogger, sm *stat
 		mux:      http.NewServeMux(),
 		sem:      make(chan struct{}, config.Threads),
 		statsMgr: sm,
+		limiter:  NewTokenBucket(100*time.Millisecond, 1100, 100),
 	}
 
 	// Load up the semaphore with tickets.
@@ -72,15 +120,43 @@ func NewServer(tenantId uint, config Config, logger *zap.SugaredLogger, sm *stat
 		s.sem <- struct{}{}
 	}
 
-	s.srv = &http.Server{
-		Addr:        ":" + strconv.Itoa(int(s.config.ListenPort)),
-		Handler:     s.mux,
-		ReadTimeout: 10 * time.Second,
+	var err error
+	s.lis, err = net.Listen("tcp", fmt.Sprintf("%s:%d", "localhost", config.ListenPort))
+	if err != nil {
+		logger.Fatalw("error listening", "err", err)
 	}
+
+	s.srv = grpc.NewServer()
+	pb.RegisterGreeterServer(s.srv, &s)
 
 	logger.Infow("done creating server", "config", s.config)
 
 	return &s
+}
+
+func (s *Server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloReply, error) {
+	s.log.Debugw("handling request", "name", in.GetName())
+
+	s.statsMgr.Set("server.expected_latency", float64(s.currentRequestLatency().Milliseconds())/1000, s.tid)
+
+	var err error
+
+	// Must increment the queue size before "work" begins.
+	sz := atomic.AddInt32(&s.queueSize, 1)
+	defer atomic.AddInt32(&s.queueSize, -1)
+
+	admit := s.limiter.Admit()
+
+	if admit {
+		s.statsMgr.Incr(fmt.Sprintf("server.%s.processed.success", in.GetName()), s.tid)
+	} else {
+		s.statsMgr.Incr(fmt.Sprintf("server.%s.processed.throttled", in.GetName()), s.tid)
+		err = fmt.Errorf("throttled")
+	}
+
+	s.statsMgr.Set("server.queue.size", float64(sz), s.tid)
+	s.log.Debugw("server received", "name", in.GetName())
+	return &pb.HelloReply{Message: "Hello " + in.GetName()}, err
 }
 
 func (s *Server) DelayedShutdown(wg *sync.WaitGroup) {
@@ -93,10 +169,8 @@ func (s *Server) DelayedShutdown(wg *sync.WaitGroup) {
 
 	time.Sleep(delay)
 
-	s.log.Infow("gracefully shutting down",
-		"service_length", delay)
-	s.srv.Shutdown(context.Background())
-	s.log.Infow("graceful shutdown complete")
+	s.log.Infow("gracefully shutting down", "service_length", delay)
+	s.srv.Stop()
 }
 
 func getLatencyFromDistribution(latencyDistribution []WeightedLatency, rand_num int) (time.Duration, error) {
@@ -128,38 +202,10 @@ func (s *Server) currentRequestLatency() time.Duration {
 	return sleepTime
 }
 
-func (s *Server) requestHandler(w http.ResponseWriter, req *http.Request) {
-	s.statsMgr.Set("server.expected_latency", float64(s.currentRequestLatency().Milliseconds())/1000, s.tid)
-	rq := request{
-		rcvTime:  time.Now(),
-		progress: 0 * time.Microsecond,
-	}
-
-	// Must increment the queue size before "work" begins.
-	sz := atomic.AddInt32(&s.queueSize, 1)
-	defer atomic.AddInt32(&s.queueSize, -1)
-
-	// This is the "servicing" of a request. The semaphore asserts the
-	// concurrency.
-	crl := s.currentRequestLatency()
-	workDuration := 500 * time.Microsecond
-	for rq.progress < crl {
-		<-s.sem
-		// Hard-coding the amount of time a rq is "worked" on.
-		// TODO: make this configurable if needed, avoiding now because too many
-		// knobs.
-		time.Sleep(workDuration)
-		s.sem <- struct{}{}
-		rq.progress += workDuration
-	}
-
-	s.statsMgr.Set("server.queue.size", float64(sz), s.tid)
-}
-
 func (s *Server) Start(wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	s.mux.HandleFunc("/", s.requestHandler)
+	s.log.Infow("starting server...")
 
 	// Make sure the server shuts down after the configured amount of time.
 	var shutdownWg sync.WaitGroup
@@ -169,9 +215,8 @@ func (s *Server) Start(wg *sync.WaitGroup) {
 	// Set the simulation start time.
 	s.startTime = time.Now()
 
-	if err := s.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		s.log.Fatalw("server error",
-			"error", err)
+	if err := s.srv.Serve(s.lis); err != nil && err != http.ErrServerClosed {
+		s.log.Fatalw("server error", "error", err)
 	}
 
 	// Wait for shutdown to occur.

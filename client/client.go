@@ -1,23 +1,18 @@
 package client
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"math"
 	"math/rand"
-	"net"
-	"net/http"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/m3db/prometheus_remote_client_golang/promremote"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
 
+	pb "allen.gg/bufferbloater/helloworld"
 	"allen.gg/bufferbloater/stats"
 )
 
@@ -46,8 +41,7 @@ type Client struct {
 	config     Config
 	log        *zap.SugaredLogger
 	statsMgr   *stats.StatsMgr
-	httpClient *http.Client
-	pClient    promremote.Client
+	grpcClient pb.GreeterClient
 
 	// Tenant ID.
 	tid uint
@@ -56,29 +50,21 @@ type Client struct {
 }
 
 func NewClient(tenantId uint, config Config, logger *zap.SugaredLogger, sm *stats.StatsMgr) *Client {
-	pclientCfg := promremote.NewConfig(
-		//promremote.WriteURLOption(targetString),
-		promremote.HTTPClientTimeoutOption(60 * time.Second),
-	)
-
-	pClient, err := promremote.NewClient(pclientCfg)
+	serverAddr := fmt.Sprintf("%s:%d", config.TargetServer.Address, config.TargetServer.Port)
+	conn, err := grpc.Dial(serverAddr, grpc.WithInsecure())
 	if err != nil {
-		logger.Fatalw("failed to create prom client", "err", err)
+		panic(err.Error())
 	}
 
+	grpcClient := pb.NewGreeterClient(conn)
+
 	c := Client{
-		tid:      tenantId,
-		config:   config,
-		log:      logger,
-		statsMgr: sm,
-		httpClient: &http.Client{
-			Timeout: config.RequestTimeout,
-			Transport: &http.Transport{
-				MaxIdleConnsPerHost: 4096,
-			},
-		},
-		pClient:  pClient,
-		activeRq: 0,
+		tid:        tenantId,
+		config:     config,
+		log:        logger,
+		statsMgr:   sm,
+		grpcClient: grpcClient,
+		activeRq:   0,
 	}
 
 	// TODO: terminate this goroutine gracefully. Ignoring for now, since doing hax.
@@ -98,17 +84,6 @@ func NewClient(tenantId uint, config Config, logger *zap.SugaredLogger, sm *stat
 	return &c
 }
 
-type tagsT struct {
-	Name string `json:"__name__"`
-	City string `json:"city"`
-}
-
-type rqBody struct {
-	Tags      tagsT   `json:"tags"`
-	Timestamp string  `json:"timestamp"`
-	Value     float32 `json:"value"`
-}
-
 func RandStringBytes(n int) string {
 	b := make([]byte, n)
 	for i := range b {
@@ -117,61 +92,11 @@ func RandStringBytes(n int) string {
 	return string(b)
 }
 
-func (c *Client) makeHTTPRequest() (*http.Response, error) {
-	atomic.AddInt32(&c.activeRq, 1)
-	defer atomic.AddInt32(&c.activeRq, -1)
+func randomPriority() string {
+	//weights := []int{1, 1, 1}
+	priorities := []string{"high", "default", "low"}
 
-	targetString := fmt.Sprintf("http://%s:%d/api/v1/json/write", c.config.TargetServer.Address, c.config.TargetServer.Port)
-
-	requestBody := rqBody{
-		Tags: tagsT{
-			Name: RandStringBytes(3),
-			City: "caketown",
-		},
-		Timestamp: strconv.Itoa(int(time.Now().Unix())),
-		Value:     rand.Float32(),
-	}
-
-	rqJSON, err := json.Marshal(requestBody)
-	if err != nil {
-		c.log.Fatalw("failed to marshal json", rqJSON)
-	}
-
-	resp, err := http.Post(targetString, "application/json",
-		bytes.NewBuffer(rqJSON))
-	return resp, err
-}
-
-func (c *Client) makeRequest() (promremote.WriteResult, error) {
-
-	atomic.AddInt32(&c.activeRq, 1)
-	defer atomic.AddInt32(&c.activeRq, -1)
-
-	ts := []promremote.TimeSeries{
-		promremote.TimeSeries{
-			Labels: []promremote.Label{
-				{
-					Name:  "__name__",
-					Value: "foofoo", //RandStringBytes(3),
-				},
-				{
-					Name:  "random_label",
-					Value: RandStringBytes(3),
-				},
-				{
-					Name:  "foo",
-					Value: "bar",
-				},
-			},
-			Datapoint: promremote.Datapoint{
-				//Timestamp: time.Now(),
-				Value: rand.Float64(),
-			},
-		},
-	}
-
-	opts := promremote.WriteOptions{}
-	return c.pClient.WriteTimeSeries(context.Background(), ts, opts)
+	return priorities[rand.Intn(3)]
 }
 
 func (c *Client) sendWorkloadRequest(numRetries int) {
@@ -184,44 +109,29 @@ func (c *Client) sendWorkloadRequest(numRetries int) {
 	rqStart := time.Now()
 	defer c.statsMgr.DirectMeasurement("client.rq.total_hist", rqStart, 1.0, c.tid)
 
-	res, err := c.makeHTTPRequest()
+	pri := randomPriority()
+	c.statsMgr.Incr(fmt.Sprintf("client.rq.%s.count", pri), c.tid)
+	_, err := c.grpcClient.SayHello(context.Background(), &pb.HelloRequest{Name: pri})
+	if err != nil {
+		c.log.Errorw("error sending request", "err", err.Error())
+		return
+	}
 	latency := time.Since(rqStart)
 
-	// Handle timeouts and report error otherwise.
-	if err != nil {
-		if terr, ok := err.(net.Error); ok && terr.Timeout() {
-			c.log.Warnw("request timed out", "client", c.tid)
+	c.statsMgr.DirectMeasurement("client.rq.latency", rqStart, float64(latency.Seconds()), c.tid)
+	c.statsMgr.DirectMeasurement("client.rq.success_hist", rqStart, 1.0, c.tid)
+	c.statsMgr.Incr("client.rq.success.count", c.tid)
 
-			// Directly measuring timeouts because we only care about the point-in-time
-			// the request that timed out was sent.
+	/*
+		case http.StatusServiceUnavailable, http.StatusTooManyRequests:
+			c.statsMgr.DirectMeasurement("client.rq.503", rqStart, 1.0, c.tid)
+			c.statsMgr.Incr("client.rq.failure.count", c.tid)
+		case http.StatusRequestTimeout, http.StatusGatewayTimeout:
 			c.statsMgr.DirectMeasurement("client.rq.timeout", rqStart, 1.0, c.tid)
-		} else {
-			c.log.Errorw("request error", "error", err, "client", c.tid)
+		default:
+			c.log.Fatalw("wtf is this", "status", res.StatusCode, "resp", res, "client", c.tid)
 		}
-		c.statsMgr.Incr("client.rq.failure.count", c.tid)
-		return
-	}
-
-	_, err = io.Copy(io.Discard, res.Body)
-	if err != nil {
-		c.log.Fatalw("failed noop IO copy", "err", err.Error())
-	}
-	res.Body.Close()
-
-	switch res.StatusCode {
-	case http.StatusOK:
-		c.statsMgr.DirectMeasurement("client.rq.latency", rqStart, float64(latency.Seconds()), c.tid)
-		c.statsMgr.DirectMeasurement("client.rq.success_hist", rqStart, 1.0, c.tid)
-		c.statsMgr.Incr("client.rq.success.count", c.tid)
-		return
-	case http.StatusServiceUnavailable, http.StatusTooManyRequests:
-		c.statsMgr.DirectMeasurement("client.rq.503", rqStart, 1.0, c.tid)
-		c.statsMgr.Incr("client.rq.failure.count", c.tid)
-	case http.StatusRequestTimeout, http.StatusGatewayTimeout:
-		c.statsMgr.DirectMeasurement("client.rq.timeout", rqStart, 1.0, c.tid)
-	default:
-		c.log.Fatalw("wtf is this", "status", res.StatusCode, "resp", res, "client", c.tid)
-	}
+	*/
 }
 
 func (c *Client) processWorkloadStage(ws WorkloadStage) {
