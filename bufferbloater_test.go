@@ -44,34 +44,12 @@ func TestServerParsing(t *testing.T) {
 	assert.Equal(t, err, nil)
 
 	expected := server.Config{
-		Profile: []server.LatencySegment{
+		Profile: []server.Segment{
 			{
-				WeightSum:       100,
 				SegmentDuration: time.Second * 20,
-				LatencyDistribution: []server.WeightedLatency{
-					{
-						Weight:  49,
-						Latency: time.Millisecond * 1,
-					},
-					{
-						Weight:  51,
-						Latency: time.Millisecond * 2,
-					},
-				},
 			},
 			{
-				WeightSum:       98,
 				SegmentDuration: time.Second * 5,
-				LatencyDistribution: []server.WeightedLatency{
-					{
-						Weight:  48,
-						Latency: time.Millisecond * 3,
-					},
-					{
-						Weight:  50,
-						Latency: time.Millisecond * 4,
-					},
-				},
 			},
 		},
 		ListenPort: 9002,

@@ -71,6 +71,7 @@ func (s *StatsMgr) sample() {
 func (s *StatsMgr) DumpStatsToFolder(folderName string) error {
 	s.mtx.Lock()
 
+	s.log.Infow("removing old stats data", "dir", folderName)
 	os.RemoveAll(folderName)
 	os.MkdirAll(folderName, os.ModePerm)
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"net/http"
 	_ "net/http/pprof"
@@ -26,7 +27,7 @@ func main() {
 		sugar.Fatalw("configuration file not specified")
 	}
 
-	bb, err := NewBufferbloater(*configFile, sugar)
+	bb, err := NewBufferbloater(context.Background(), *configFile, sugar)
 	if err != nil {
 		sugar.Fatalw("failed to create bufferbloater",
 			"error", err)

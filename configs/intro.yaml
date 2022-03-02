@@ -1,47 +1,40 @@
 clients:
-  - workload:
+  - priority: "low"
+    workload:
     - rps: 1000
       duration: 5s
-    - rps: 1500
-      duration: 5s
-    - rps: 2000
-      duration: 5s
-    - rps: 2500
-      duration: 5s
-    - rps: 3000
-      duration: 10s
-    - rps: 500
-      duration: 30s
-    rq_timeout: 500s
+    - rps: 5000
+      duration: 15s
+    rq_timeout: 5s
     retry_count: 0
     target_server:
       address: 127.0.0.1
-      port: 10000
+      port: 8080
+  - priority: "high"
+    workload:
+    - rps: 1000
+      duration: 15s
+    - rps: 5000
+      duration: 5s
+    rq_timeout: 5s
+    retry_count: 0
+    target_server:
+      address: 127.0.0.1
+      port: 8080
+  - priority: "default"
+    workload:
+    - rps: 1000
+      duration: 10s
+    - rps: 5000
+      duration: 10s
+    rq_timeout: 5s
+    retry_count: 0
+    target_server:
+      address: 127.0.0.1
+      port: 8080
 servers:
   - profile:
-    - duration: 60s
-      latency_distribution:
-      - weight: 50
-        latency: 3ms
-      - weight: 5
-        latency: 5ms
-      - weight: 5
-        latency: 7ms
-      - weight: 5
-        latency: 10ms
-      - weight: 5
-        latency: 15ms
-      - weight: 5
-        latency: 22ms
-      - weight: 5
-        latency: 34ms
-      - weight: 5
-        latency: 51ms
-      - weight: 5
-        latency: 76ms
-      - weight: 5
-        latency: 115ms
-      - weight: 5
-        latency: 150ms
-    listen_port: 9002
+    - duration: 20s
+      pops_per_sec: 3500
+    listen_port: 8080
     threads: 8

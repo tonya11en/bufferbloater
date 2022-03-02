@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"io/ioutil"
 	"sync"
@@ -16,11 +17,16 @@ import (
 
 var statsDataDir = flag.String("data_dir", "bufferbloater_data", "Specifies the directory to drop the CSV data")
 
+const statsDeltaT = 500 * time.Millisecond
+
 type Bufferbloater struct {
+	ctx      context.Context
+	cancel   context.CancelFunc
 	log      *zap.SugaredLogger
 	c        []*client.Client
 	s        []*server.Server
 	statsMgr *stats.StatsMgr
+	lifetime time.Duration
 }
 
 type clientConfig struct {
@@ -33,16 +39,14 @@ type clientConfig struct {
 		Address string
 		Port    uint
 	} `yaml:"target_server"`
-	RetryCount int `yaml:"retry_count"`
+	RetryCount int    `yaml:"retry_count"`
+	Priority   string `yaml:"priority"`
 }
 
 type serverConfig struct {
 	Profile []struct {
-		LatencyDistribution []struct {
-			Weight  uint   `yaml:"weight"`
-			Latency string `yaml:"latency"`
-		} `yaml:"latency_distribution"`
-		Duration string
+		PopsPerSec uint `yaml:"pops_per_sec"`
+		Duration   string
 	} `yaml:"profile"`
 	ListenPort uint `yaml:"listen_port"`
 	Threads    uint `yaml:"threads"`
@@ -64,6 +68,7 @@ func clientConfigParse(cc clientConfig) (client.Config, error) {
 			Port:    cc.TargetServer.Port,
 		},
 		RetryCount: cc.RetryCount,
+		Priority:   cc.Priority,
 	}
 
 	d, err := time.ParseDuration(cc.RqTimeout)
@@ -97,30 +102,14 @@ func serverConfigParse(sc serverConfig) (server.Config, error) {
 	}
 
 	for _, segment := range sc.Profile {
-		s := server.LatencySegment{}
-
-		// Calculate the latency distribution.
-		s.WeightSum = 0
-		s.LatencyDistribution = []server.WeightedLatency{}
-		for _, wl := range segment.LatencyDistribution {
-			l, err := time.ParseDuration(wl.Latency)
-			if err != nil {
-				return server.Config{}, err
-			}
-
-			weightedLatency := server.WeightedLatency{
-				Weight:  wl.Weight,
-				Latency: l,
-			}
-			s.LatencyDistribution = append(s.LatencyDistribution, weightedLatency)
-			s.WeightSum += wl.Weight
-		}
+		s := server.Segment{}
 
 		d, err := time.ParseDuration(segment.Duration)
 		if err != nil {
 			return server.Config{}, err
 		}
 		s.SegmentDuration = d
+		s.PopsPerSec = segment.PopsPerSec
 
 		serverConfig.Profile = append(serverConfig.Profile, s)
 	}
@@ -145,11 +134,12 @@ func parseConfigFromFile(configFilename string) (parsedYamlConfig, error) {
 	return parsedConfig, nil
 }
 
-func NewBufferbloater(configFilename string, logger *zap.SugaredLogger) (*Bufferbloater, error) {
+func NewBufferbloater(ctx context.Context, configFilename string, logger *zap.SugaredLogger) (*Bufferbloater, error) {
 	bb := Bufferbloater{
 		log:      logger,
 		statsMgr: stats.NewStatsMgrImpl(logger),
 	}
+	bb.ctx, bb.cancel = context.WithCancel(ctx)
 
 	parsedConfig, err := parseConfigFromFile(configFilename)
 	if err != nil {
@@ -158,13 +148,22 @@ func NewBufferbloater(configFilename string, logger *zap.SugaredLogger) (*Buffer
 	}
 
 	// Create clients.
-	for tid, arg := range parsedConfig.Clients {
+	for _, arg := range parsedConfig.Clients {
 		cc, err := clientConfigParse(arg)
 		if err != nil {
 			bb.log.Fatalw("failed to create server config",
 				"error", err)
 		}
-		bb.c = append(bb.c, client.NewClient(uint(tid), cc, logger, bb.statsMgr))
+
+		var tmp time.Duration
+		for _, stage := range cc.Workload {
+			tmp += stage.Duration
+		}
+		if tmp > bb.lifetime {
+			bb.lifetime = tmp
+		}
+
+		bb.c = append(bb.c, client.NewClient(bb.ctx, 0, cc, logger, bb.statsMgr))
 	}
 
 	// Create servers.
@@ -174,7 +173,16 @@ func NewBufferbloater(configFilename string, logger *zap.SugaredLogger) (*Buffer
 			bb.log.Fatalw("failed to create server config",
 				"error", err)
 		}
-		bb.s = append(bb.s, server.NewServer(uint(tid), sc, logger, bb.statsMgr))
+
+		var tmp time.Duration
+		for _, segment := range sc.Profile {
+			tmp += segment.SegmentDuration
+		}
+		if tmp > bb.lifetime {
+			bb.lifetime = tmp
+		}
+
+		bb.s = append(bb.s, server.NewServer(bb.ctx, uint(tid), sc, logger, bb.statsMgr))
 	}
 
 	return &bb, nil
@@ -188,7 +196,7 @@ func (bb *Bufferbloater) Run() {
 	var statsWg sync.WaitGroup
 	statsWg.Add(1)
 
-	go bb.statsMgr.PeriodicStatsCollection(500*time.Millisecond, stopStats, &statsWg)
+	go bb.statsMgr.PeriodicStatsCollection(statsDeltaT, stopStats, &statsWg)
 
 	var wg sync.WaitGroup
 
@@ -205,6 +213,14 @@ func (bb *Bufferbloater) Run() {
 		wg.Add(1)
 		go c.Start(&wg)
 	}
+
+	// Kill the simulation after everything is done.
+	go func() {
+		bb.log.Infow("simulation underway", "lifetime", bb.lifetime)
+		time.Sleep(bb.lifetime)
+		bb.log.Infow("simulation complete, cancelling context")
+		bb.cancel()
+	}()
 
 	wg.Wait()
 

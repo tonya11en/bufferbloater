@@ -1,0 +1,71 @@
+namespace bouncer_flatbuf;
+
+/**
+ * The metrics buffering service functions as a persistent queue for pushing/popping various
+ * payloads.
+ */
+rpc_service MetricsBuffer {
+  // Unary RPC to push a single payload to the queuing service.
+  PushRecord(PushRecordRequest):PushRecordReply;
+
+  // Bidirectional streaming RPC used to pop/ack records from the service. The protocol is currently a simple interaction:
+  // 
+  //    1) A client sends an empty 'ack_uuid' in the request. This lets the server know it would
+  //    like to pop a new record for processing.
+  //
+  //    2) The server replies with a single record and a UUID.
+  //
+  //    3) The client acks the request by setting the 'ack_uuid' field populated with the value
+  //       supplied by the server in its response. Responding with a UUID not provided over this
+  //       specific stream is an error and will result in termination of the stream.
+  //
+  // Notes:
+  //   * This interaction may be performed any number of times per stream.
+  //   * Any un-acked record will be re-enqueued upon stream termination.
+  PopRecord(PopRecordRequest):PopRecordReply (streaming: "bidi");
+
+  // TODO: Consider unary batch calls such as PushRecords and PopRecords.
+}
+
+// The record payload is what we want consumers to receive.
+union Payload { 
+
+  // A serialized protobuf of Any type.
+  AnyProto,
+}
+
+// A payload containing a serialized pb.Any.
+table AnyProto {
+
+  // The serialized proto bytes.
+  buf:[ubyte];
+}
+
+// The record is the format we use to persist payloads in the queues.
+table Record {
+  payload:Payload;
+}
+
+// Pushes a payload to the Bouncer server.
+table PushRecordRequest {
+  payload:Payload;
+}
+
+// Acknowledgement returned by the server to indicate successful persistence.
+table PushRecordReply {
+}
+
+// Sending a PopRecordRequest with an empty `ack_uuid` field requests a new record and accompanying
+// UUID from the server. Populating the `ack_uuid` field with one of the returned record UUIDs will
+// notify the server that the record was processed and prevent it from requeuing the record.
+table PopRecordRequest {
+  ack_uuid:string;
+}
+
+// A reply from the server containing a record and a UUID to be used in ACKs.
+table PopRecordReply {
+  uuid:string;
+  record:Record;
+}
+
+root_type Record;
